@@ -40,3 +40,16 @@ jobs:
           name: firmware-images
           path: bin/eagle.*.bin
           retention-days: 5
+
+      - name: 'Size summary'
+        run: |
+         echo "### Artifact sizes:"        >> $GITHUB_STEP_SUMMARY
+         echo "| Section | Bytes        |" >> $GITHUB_STEP_SUMMARY
+         echo "| :------ | -----------: |" >> $GITHUB_STEP_SUMMARY
+         xtensa-lx106-elf-size -A -d \
+           hello_esp8266/.output/eagle/debug/image/eagle.app.v6.out \
+           | egrep "^[.](data|rodata|bss|irom0.text|text)" \
+           > section_sizes.txt
+         while read name size addr; do \
+           echo "| ${name} | ${size} |"; \
+         done < section_sizes.txt >> $GITHUB_STEP_SUMMARY
