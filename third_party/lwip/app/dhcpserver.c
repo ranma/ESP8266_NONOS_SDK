@@ -209,7 +209,7 @@ static uint8_t* ICACHE_FLASH_ATTR add_offer_options(uint8_t *optptr)
 #endif
 
         *optptr++ = DHCP_OPTION_INTERFACE_MTU;
-        *optptr++ = 2;  
+        *optptr++ = 2;
 #ifdef CLASS_B_NET
         *optptr++ = 0x05;
         *optptr++ = 0xdc;
@@ -217,6 +217,20 @@ static uint8_t* ICACHE_FLASH_ATTR add_offer_options(uint8_t *optptr)
         *optptr++ = 0x02;
         *optptr++ = 0x40;
 #endif
+
+        *optptr++ = DHCP_OPTION_CAPTIVE_PORTAL;
+        *(optptr++) = ets_sprintf(optptr, "http://%d.%d.%d.%d/",
+                                ip4_addr1(&ipadd),
+                                ip4_addr2(&ipadd),
+                                ip4_addr3(&ipadd),
+                                ip4_addr4(&ipadd));
+
+        *optptr++ = DHCP_OPTION_CAPTIVE_PORTAL_LEGACY;
+        *(optptr++) = ets_sprintf(optptr, "http://%d.%d.%d.%d/",
+                                ip4_addr1(&ipadd),
+                                ip4_addr2(&ipadd),
+                                ip4_addr3(&ipadd),
+                                ip4_addr4(&ipadd));
 
         *optptr++ = DHCP_OPTION_PERFORM_ROUTER_DISCOVERY;
         *optptr++ = 1;  
@@ -288,6 +302,8 @@ static void ICACHE_FLASH_ATTR create_msg(struct dhcps_msg *m)
 ///////////////////////////////////////////////////////////////////////////////////
 static void ICACHE_FLASH_ATTR send_offer(struct dhcps_msg *m)
 {
+        int options_max = sizeof(m->options);
+        int options_len;
         uint8_t *end;
         struct pbuf *p, *q;
         u8_t *data;
@@ -299,6 +315,9 @@ static void ICACHE_FLASH_ATTR send_offer(struct dhcps_msg *m)
         end = add_msg_type(&m->options[4], DHCPOFFER);
         end = add_offer_options(end);
         end = add_end(end);
+        options_len = end - &m->options[0];
+        os_printf("udhcp: options size %d/%d\n",
+                  options_len, options_max);
 
         p = pbuf_alloc(PBUF_TRANSPORT, sizeof(struct dhcps_msg), PBUF_RAM);
 #if DHCPS_DEBUG
