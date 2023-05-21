@@ -1,0 +1,37 @@
+name: Linux Build
+
+on:
+  workflow_dispatch:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  build-linux:
+    name: Test building on Linux
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install toolchain
+        run: |
+          wget -q https://github.com/ranma/esp8266-toolchain/raw/master/xtensa-lx106-elf-linux64-1.22.0-100-ge567ec7-5.2.0.tar.gz
+          tar -zxf xtensa-lx106-elf-linux64-1.22.0-100-ge567ec7-5.2.0.tar.gz
+          ./xtensa-lx106-elf/bin/xtensa-lx106-elf-gcc -v
+          echo ${PWD}/xtensa-lx106-elf/bin/ >> $GITHUB_PATH
+
+      - name: Test build
+        run: |
+          cd hello_esp8266
+          make
+
+#      - name: 'Upload Artifact'
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: my-artifact
+#          path: my_file.txt
+#          retention-days: 5
