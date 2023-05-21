@@ -219,18 +219,10 @@ static uint8_t* ICACHE_FLASH_ATTR add_offer_options(uint8_t *optptr)
 #endif
 
         *optptr++ = DHCP_OPTION_CAPTIVE_PORTAL;
-        *(optptr++) = ets_sprintf(optptr, "http://%d.%d.%d.%d/",
-                                ip4_addr1(&ipadd),
-                                ip4_addr2(&ipadd),
-                                ip4_addr3(&ipadd),
-                                ip4_addr4(&ipadd));
+        *(optptr++) = ets_sprintf(optptr, "http://esp.local/");
 
         *optptr++ = DHCP_OPTION_CAPTIVE_PORTAL_LEGACY;
-        *(optptr++) = ets_sprintf(optptr, "http://%d.%d.%d.%d/",
-                                ip4_addr1(&ipadd),
-                                ip4_addr2(&ipadd),
-                                ip4_addr3(&ipadd),
-                                ip4_addr4(&ipadd));
+        *(optptr++) = ets_sprintf(optptr, "http://esp.local/");
 
         *optptr++ = DHCP_OPTION_PERFORM_ROUTER_DISCOVERY;
         *optptr++ = 1;  
