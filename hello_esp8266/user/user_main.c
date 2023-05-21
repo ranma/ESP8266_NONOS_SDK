@@ -69,7 +69,11 @@ user_init(void)
 	uart_div_modify(0, UART_CLK_FREQ / 115200);
 	os_printf("@115200 compile time:"__DATE__" "__TIME__"\r\n");
 
-        /* wifi_softap_set_config(&config); */
+	/* Stop DHCP from offering a default route in AP mode */
+	bool offer_router = false;
+	wifi_softap_set_dhcps_offer_option(OFFER_ROUTER, &offer_router);
+
+	/* wifi_softap_set_config(&config); */
 
 	/* Start in AP+Station mode */
 	wifi_set_opmode(STATIONAP_MODE);
