@@ -50,7 +50,8 @@ ifeq ($(FLAVOR),release)
 endif
 
 COMPONENTS_eagle.app.v6 = \
-    user/libuser.a
+    user/libuser.a \
+    ../third_party/lwip/liblwip.a
 
 LINKFLAGS_eagle.app.v6 = \
     -L../lib \
@@ -61,6 +62,7 @@ LINKFLAGS_eagle.app.v6 = \
     -u call_user_start \
     -Wl,-static \
     -Wl,--start-group \
+    $(DEP_LIBS_eagle.app.v6) \
     -lc \
     -lgcc \
     -lhal \
@@ -71,7 +73,6 @@ LINKFLAGS_eagle.app.v6 = \
     -lcrypto \
     -lmain \
     -ldriver \
-    $(DEP_LIBS_eagle.app.v6) \
     -Wl,--end-group
 
 DEPENDS_eagle.app.v6 = \
