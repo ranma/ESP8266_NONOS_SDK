@@ -225,10 +225,10 @@ static uint8_t* ICACHE_FLASH_ATTR add_offer_options(uint8_t *optptr)
         *(optptr++) = ets_sprintf(optptr, "http://esp.local/");
 
         *optptr++ = DHCP_OPTION_PERFORM_ROUTER_DISCOVERY;
-        *optptr++ = 1;  
-        *optptr++ = 0x00; 
+        *optptr++ = 1;
+        *optptr++ = 0x00; /* disable ICMP router discovery */
 
-        *optptr++ = 43;
+        *optptr++ = DHCP_OPTION_VENDOR_SPECIFIC;
         *optptr++ = 6;
 
         *optptr++ = 0x01;
