@@ -34,9 +34,9 @@ jobs:
           cd hello_esp8266
           make
 
-#      - name: 'Upload Artifact'
-#        uses: actions/upload-artifact@v3
-#        with:
-#          name: my-artifact
-#          path: my_file.txt
-#          retention-days: 5
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v3
+        with:
+          name: firmware-images
+          path: bin/eagle.*.bin
+          retention-days: 5
