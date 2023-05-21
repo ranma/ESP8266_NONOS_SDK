@@ -208,15 +208,11 @@ static uint8_t* ICACHE_FLASH_ATTR add_offer_options(uint8_t *optptr)
         *optptr++ = 255;
 #endif
 
+        struct netif *netif = eagle_lwip_getif(SOFTAP_IF);
         *optptr++ = DHCP_OPTION_INTERFACE_MTU;
         *optptr++ = 2;
-#ifdef CLASS_B_NET
-        *optptr++ = 0x05;
-        *optptr++ = 0xdc;
-#else
-        *optptr++ = 0x02;
-        *optptr++ = 0x40;
-#endif
+        *optptr++ = netif->mtu >> 8;
+        *optptr++ = netif->mtu & 0xff;
 
         *optptr++ = DHCP_OPTION_CAPTIVE_PORTAL;
         *(optptr++) = ets_sprintf(optptr, "http://esp.local/");
