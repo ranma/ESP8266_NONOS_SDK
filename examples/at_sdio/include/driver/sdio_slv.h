@@ -25,7 +25,7 @@
 #ifndef __SDIO_SLAVE_H__
 #define __SDIO_SLAVE_H__
 #include "slc_register.h"
-#include "c_types.h"
+#include "c_types.h"
 #include "user_interface.h"
 
 //#define SDIO_DEBUG
