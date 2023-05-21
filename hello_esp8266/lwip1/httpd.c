@@ -23,6 +23,13 @@ static FLASH_STR char http404_NotFound[] =
     "Connection: close\r\n"
     "\r\n"
     "<html><body><h1>404 Not Found</h1></body></html>";
+static FLASH_STR char http302_Found[] =
+    "HTTP/1.1 302 Found\r\n"
+    "Content-Type: text/html\r\n"
+    "Connection: close\r\n"
+    "Location: http://esp.local/\r\n"
+    "\r\n"
+    "<html><body><h1>302 Found</h1></body></html>";
 static FLASH_STR char http200_OK[] =
     "HTTP/1.1 200 OK\r\n"
     "Content-Type: text/html\r\n"
@@ -66,7 +73,8 @@ httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
 		tcp_write(pcb, http200_OK, strlen(http200_OK), TCP_WRITE_FLAG_COPY);
 		tcp_write(pcb, page_hello, strlen(page_hello), TCP_WRITE_FLAG_COPY);
 	} else {
-		tcp_write(pcb, http404_NotFound, strlen(http404_NotFound), TCP_WRITE_FLAG_COPY);
+		/* 302 instead of 404, for captive portal */
+		tcp_write(pcb, http302_Found, strlen(http302_Found), TCP_WRITE_FLAG_COPY);
 	}
 
 exit_recved:
