@@ -215,10 +215,12 @@ static uint8_t* ICACHE_FLASH_ATTR add_offer_options(uint8_t *optptr)
         *optptr++ = netif->mtu & 0xff;
 
         *optptr++ = DHCP_OPTION_CAPTIVE_PORTAL;
-        *(optptr++) = ets_sprintf(optptr, "http://esp.local/");
+        *optptr = ets_sprintf(optptr+1, "http://esp.local/");
+        optptr += *optptr+1;
 
         *optptr++ = DHCP_OPTION_CAPTIVE_PORTAL_LEGACY;
-        *(optptr++) = ets_sprintf(optptr, "http://esp.local/");
+        *optptr = ets_sprintf(optptr+1, "http://esp.local/");
+        optptr += *optptr+1;
 
         *optptr++ = DHCP_OPTION_PERFORM_ROUTER_DISCOVERY;
         *optptr++ = 1;
