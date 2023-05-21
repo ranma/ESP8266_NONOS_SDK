@@ -69,8 +69,8 @@ init_done_cb(void)
 	print_ap_config();
 	print_sta_config();
 
-	/* IPADDR_ANY takes care of the station client */
-	httpd_init(IPADDR_ANY, 80);
+	cdnsd_init(IPADDR_ANY, DNS_SERVER_PORT);
+	httpd_init(IPADDR_ANY, HTTP_SERVER_PORT);
 }
 
 void ICACHE_FLASH_ATTR

@@ -11,8 +11,6 @@
 #include "os_type.h"
 #include "user_config.h"
 
-#define FLASH_STR const ICACHE_RODATA_ATTR STORE_ATTR
-
 static FLASH_STR char http400_BadRequest[] =
     "HTTP/1.1 400 Bad Request\r\n"
     "Content-Type: text/html\r\n"
