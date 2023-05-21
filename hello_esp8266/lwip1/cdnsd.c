@@ -59,6 +59,14 @@ typedef struct __attribute__((packed)) {
 	uint16_t len;
 } dns_answer_st;
 
+typedef struct __attribute__((packed)) {
+	uint32_t serial;
+	uint32_t refresh;
+	uint32_t retry;
+	uint32_t expire;
+	uint32_t min_ttl;
+} dns_soa_st;
+
 typedef union __attribute__((packed)) {
 	uint16_t val;
 	struct {
@@ -151,6 +159,22 @@ handle_dns(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_addr *addr,
 			*buf++ = 'n';
 			*buf++ = 's';
 			*buf++ = 0;
+			break; }
+		case DNS_RRTYPE_SOA: {
+			dns_soa_st *soa = (void*)&buf[4];
+			answer->len = PP_HTONS(4 + sizeof(*soa));
+			/* Primary nameserver */
+			*buf++ = name_ofs.h;
+			*buf++ = name_ofs.l;
+			/* Responsible mailbox */
+			*buf++ = name_ofs.h;
+			*buf++ = name_ofs.l;
+			soa->serial = PP_HTONL(12345);
+			soa->refresh = PP_HTONL(300);   /* 5 min */
+			soa->retry = PP_HTONL(150);     /* 2.5 min */
+			soa->expire = PP_HTONL(3600);   /* 1 hour */
+			soa->min_ttl = PP_HTONL(60);    /* 1 min */
+			buf += sizeof(*soa);
 			break; }
 		default:
 			/* Can't handle this query, undo the name copy */
