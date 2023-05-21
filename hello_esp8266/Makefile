@@ -26,7 +26,7 @@ GEN_IMAGES= eagle.app.v6.out
 GEN_BINS= eagle.app.v6.bin
 SPECIAL_MKTARGETS=$(APP_MKTARGETS)
 SUBDIRS= \
-    user ../third_party/lwip
+    user lwip1 ../third_party/lwip
 
 endif # } PDIR
 
@@ -51,6 +51,7 @@ endif
 
 COMPONENTS_eagle.app.v6 = \
     user/libuser.a \
+    lwip1/liblwip1.a \
     ../third_party/lwip/liblwip.a
 
 LINKFLAGS_eagle.app.v6 = \

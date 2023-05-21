@@ -6,6 +6,7 @@
 #include "gpio.h"
 #include "eagle_soc.h"
 #include "user_interface.h"
+#include "user_config.h"
 #include "mem.h"
 
 
@@ -37,20 +38,27 @@ static void ICACHE_FLASH_ATTR
 print_ap_config(void)
 {
 	struct softap_config config = {0};
+	struct ip_info ip = {0};
 
 	wifi_softap_get_config(&config);
+	wifi_get_ip_info(SOFTAP_IF, &ip);
 	os_printf("AP SSID: %s\n", config.ssid);
 	os_printf("AP PW: %s\n", config.password);
 	os_printf("AP AUTH: %s\n", auth_mode_str(config.authmode));
+	os_printf("AP IP: " IPSTR "\n", IP2STR(&ip.ip));
 }
 
 static void ICACHE_FLASH_ATTR
 print_sta_config(void)
 {
 	struct station_config config = {0};
+	struct ip_info ip = {0};
+
 	wifi_station_get_config(&config);
+	wifi_get_ip_info(STATION_IF, &ip);
 	os_printf("STA SSID: %s\n", config.ssid);
 	os_printf("STA PW: %s\n", config.password);
+	os_printf("STA IP: " IPSTR "\n", IP2STR(&ip.ip));
 }
 
 static void ICACHE_FLASH_ATTR
@@ -60,6 +68,9 @@ init_done_cb(void)
 
 	print_ap_config();
 	print_sta_config();
+
+	/* IPADDR_ANY takes care of the station client */
+	httpd_init(IPADDR_ANY, 80);
 }
 
 void ICACHE_FLASH_ATTR
