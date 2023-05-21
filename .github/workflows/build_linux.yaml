@@ -17,6 +17,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install python2
+
       - name: Install toolchain
         run: |
           wget -q https://github.com/ranma/esp8266-toolchain/raw/master/xtensa-lx106-elf-linux64-1.22.0-100-ge567ec7-5.2.0.tar.gz
