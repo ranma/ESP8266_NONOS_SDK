@@ -1,6 +1,6 @@
 Notice: AT added some functions so it's larger than before, if you want to compile it, please compile it as 1024KB or larger flash in compilation STEP 5.
 
-1°¢compile options
+1„ÄÅcompile options
 
 (1) COMPILE
     Possible value: gcc
@@ -36,7 +36,7 @@ Notice: AT added some functions so it's larger than before, if you want to compi
 For example:
     make COMPILE=gcc BOOT=new APP=1 SPI_SPEED=40 SPI_MODE=QIO SPI_SIZE_MAP=0
 
-2°¢You can also use gen_misc to make and generate specific bin you needed.
+2„ÄÅYou can also use gen_misc to make and generate specific bin you needed.
     Linux: ./gen_misc.sh
     Windows: gen_misc.bat
     Follow the tips and steps.

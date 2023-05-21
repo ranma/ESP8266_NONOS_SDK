@@ -74,9 +74,9 @@ enum icmp_te_type {
  *  is splitted to two u16_t like ICMP echo needs it.
  *  This header is also used for other ICMP types that do not
  *  use the data part.
- *  ¶¨ÒåICMP»ØËÍÇëÇó±¨ÎÄÊ×²¿½á¹¹£¬
- *  ÓÉÓÚËùÓÐICMP±¨ÎÄÊ×²¿ÓÐºÜ´óÏàËÆÐÔ£¬
- *  ¸Ã½á¹¹Í¬ÑùÊÊÓÃÓÚÆäËüICMP±¨ÎÄ¡£
+ *  å®šä¹‰ICMPå›žé€è¯·æ±‚æŠ¥æ–‡é¦–éƒ¨ç»“æž„ï¼Œ
+ *  ç”±äºŽæ‰€æœ‰ICMPæŠ¥æ–‡é¦–éƒ¨æœ‰å¾ˆå¤§ç›¸ä¼¼æ€§ï¼Œ
+ *  è¯¥ç»“æž„åŒæ ·é€‚ç”¨äºŽå…¶å®ƒICMPæŠ¥æ–‡ã€‚
  */
 PACK_STRUCT_BEGIN
 struct icmp_echo_hdr {
@@ -91,11 +91,11 @@ PACK_STRUCT_END
 #  include "arch/epstruct.h"
 #endif
 
-//¶ÁÈ¡ICMPÊ×²¿ÖÐ×Ö¶Î
+//è¯»å–ICMPé¦–éƒ¨ä¸­å­—æ®µ
 #define ICMPH_TYPE(hdr) ((hdr)->type)
 #define ICMPH_CODE(hdr) ((hdr)->code)
 
-/** Combines type and code to an u16_t ÏòICMP±¨ÎÄÊ×²¿×Ö¶ÎÖÐÐ´ÈëÏàÓ¦Öµ*/
+/** Combines type and code to an u16_t å‘ICMPæŠ¥æ–‡é¦–éƒ¨å­—æ®µä¸­å†™å…¥ç›¸åº”å€¼*/
 #define ICMPH_TYPE_SET(hdr, t) ((hdr)->type = (t))
 #define ICMPH_CODE_SET(hdr, c) ((hdr)->code = (c))
 

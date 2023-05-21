@@ -1,4 +1,4 @@
-1°¢compile options
+1„ÄÅcompile options
 
 (1) COMPILE
     Possible value: gcc
@@ -34,7 +34,7 @@
 For example:
     make COMPILE=gcc BOOT=new APP=1 SPI_SPEED=40 SPI_MODE=QIO SPI_SIZE_MAP=0
 
-2°¢You can also use gen_misc to make and generate specific bin you needed.
+2„ÄÅYou can also use gen_misc to make and generate specific bin you needed.
     Linux: ./gen_misc.sh
     Windows: gen_misc.bat
     Follow the tips and steps.

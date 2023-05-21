@@ -76,7 +76,7 @@ tcpip_thread(void *arg)
   struct tcpip_msg *msg;
   LWIP_UNUSED_ARG(arg);
 
-  if (tcpip_init_done != NULL) {//ÓÃ»§×¢²áÁË×Ô¶¨Òå³õÊ¼»¯º¯Êı
+  if (tcpip_init_done != NULL) {//ç”¨æˆ·æ³¨å†Œäº†è‡ªå®šä¹‰åˆå§‹åŒ–å‡½æ•°
     tcpip_init_done(tcpip_init_done_arg);
   }
 
@@ -89,22 +89,22 @@ tcpip_thread(void *arg)
     LOCK_TCPIP_CORE();
     switch (msg->type) {
 #if LWIP_NETCONN
-    case TCPIP_MSG_API://APIµ÷ÓÃ
+    case TCPIP_MSG_API://APIè°ƒç”¨
       LWIP_DEBUGF(TCPIP_DEBUG, ("tcpip_thread: API message %p\n", (void *)msg));
       msg->msg.apimsg->function(&(msg->msg.apimsg->msg));
       break;
 #endif /* LWIP_NETCONN */
 
 #if !LWIP_TCPIP_CORE_LOCKING_INPUT
-    case TCPIP_MSG_INPKT://µ×²ãÊı¾İ°üÊäÈë
+    case TCPIP_MSG_INPKT://åº•å±‚æ•°æ®åŒ…è¾“å…¥
       LWIP_DEBUGF(TCPIP_DEBUG, ("tcpip_thread: PACKET %p\n", (void *)msg));
 #if LWIP_ETHERNET
-      if (msg->msg.inp.netif->flags & (NETIF_FLAG_ETHARP | NETIF_FLAG_ETHERNET)) {//Ö§³ÖARP
-        ethernet_input(msg->msg.inp.p, msg->msg.inp.netif);//½»¸øARP´¦Àí
+      if (msg->msg.inp.netif->flags & (NETIF_FLAG_ETHARP | NETIF_FLAG_ETHERNET)) {//æ”¯æŒARP
+        ethernet_input(msg->msg.inp.p, msg->msg.inp.netif);//äº¤ç»™ARPå¤„ç†
       } else
 #endif /* LWIP_ETHERNET */
       {
-        ip_input(msg->msg.inp.p, msg->msg.inp.netif);//½»¸øIP´¦Àí
+        ip_input(msg->msg.inp.p, msg->msg.inp.netif);//äº¤ç»™IPå¤„ç†
       }
       memp_free(MEMP_TCPIP_MSG_INPKT, msg);
       break;
@@ -117,19 +117,19 @@ tcpip_thread(void *arg)
       break;
 #endif /* LWIP_NETIF_API */
 
-    case TCPIP_MSG_CALLBACK://ÉÏ²ã»Øµ÷·½Ê½Ö´ĞĞÒ»¸öº¯Êı
+    case TCPIP_MSG_CALLBACK://ä¸Šå±‚å›è°ƒæ–¹å¼æ‰§è¡Œä¸€ä¸ªå‡½æ•°
       LWIP_DEBUGF(TCPIP_DEBUG, ("tcpip_thread: CALLBACK %p\n", (void *)msg));
       msg->msg.cb.function(msg->msg.cb.ctx);
       memp_free(MEMP_TCPIP_MSG_API, msg);
       break;
 
 #if LWIP_TCPIP_TIMEOUT
-    case TCPIP_MSG_TIMEOUT://ÉÏ²ã×¢²áÒ»¸ö¶¨Ê±ÊÂ¼ş
+    case TCPIP_MSG_TIMEOUT://ä¸Šå±‚æ³¨å†Œä¸€ä¸ªå®šæ—¶äº‹ä»¶
       LWIP_DEBUGF(TCPIP_DEBUG, ("tcpip_thread: TIMEOUT %p\n", (void *)msg));
       sys_timeout(msg->msg.tmo.msecs, msg->msg.tmo.h, msg->msg.tmo.arg);
       memp_free(MEMP_TCPIP_MSG_API, msg);
       break;
-    case TCPIP_MSG_UNTIMEOUT://ÉÏ²ãÉ¾³ıÒ»¸ö¶¨Ê±ÊÂ¼ş
+    case TCPIP_MSG_UNTIMEOUT://ä¸Šå±‚åˆ é™¤ä¸€ä¸ªå®šæ—¶äº‹ä»¶
       LWIP_DEBUGF(TCPIP_DEBUG, ("tcpip_thread: UNTIMEOUT %p\n", (void *)msg));
       sys_untimeout(msg->msg.tmo.h, msg->msg.tmo.arg);
       memp_free(MEMP_TCPIP_MSG_API, msg);
@@ -306,11 +306,11 @@ tcpip_apimsg(struct api_msg *apimsg)
   apimsg->msg.err = ERR_VAL;
 #endif
   
-  if (sys_mbox_valid(&mbox)) {//ÄÚºËÓÊÏäÓĞĞ§
+  if (sys_mbox_valid(&mbox)) {//å†…æ ¸é‚®ç®±æœ‰æ•ˆ
     msg.type = TCPIP_MSG_API;
     msg.msg.apimsg = apimsg;
-    sys_mbox_post(&mbox, &msg);//Í¶µİÏûÏ¢
-    sys_arch_sem_wait(&apimsg->msg.conn->op_completed, 0);//µÈ´ıÏûÏ¢´¦ÀíÍê±Ï
+    sys_mbox_post(&mbox, &msg);//æŠ•é€’æ¶ˆæ¯
+    sys_arch_sem_wait(&apimsg->msg.conn->op_completed, 0);//ç­‰å¾…æ¶ˆæ¯å¤„ç†å®Œæ¯•
     return apimsg->msg.err;
   }
   return ERR_VAL;
@@ -403,11 +403,11 @@ tcpip_netifapi_lock(struct netifapi_msg* netifapimsg)
 void
 tcpip_init(tcpip_init_done_fn initfunc, void *arg)
 {
-  lwip_init();//³õÊ¼»¯ÄÚºË
+  lwip_init();//åˆå§‹åŒ–å†…æ ¸
 
-  tcpip_init_done = initfunc;//×¢²áÓÃ»§×Ô¶¨Òåº¯Êı
-  tcpip_init_done_arg = arg;//º¯Êı²ÎÊı
-  if(sys_mbox_new(&mbox, TCPIP_MBOX_SIZE) != ERR_OK) {//´´½¨ÄÚºËÓÊÏä
+  tcpip_init_done = initfunc;//æ³¨å†Œç”¨æˆ·è‡ªå®šä¹‰å‡½æ•°
+  tcpip_init_done_arg = arg;//å‡½æ•°å‚æ•°
+  if(sys_mbox_new(&mbox, TCPIP_MBOX_SIZE) != ERR_OK) {//åˆ›å»ºå†…æ ¸é‚®ç®±
     LWIP_ASSERT("failed to create tcpip_thread mbox", 0);
   }
 #if LWIP_TCPIP_CORE_LOCKING
@@ -416,7 +416,7 @@ tcpip_init(tcpip_init_done_fn initfunc, void *arg)
   }
 #endif /* LWIP_TCPIP_CORE_LOCKING */
 
-  sys_thread_new(TCPIP_THREAD_NAME, tcpip_thread, NULL, TCPIP_THREAD_STACKSIZE, TCPIP_THREAD_PRIO);//´´½¨ÄÚºË½ø³Ì
+  sys_thread_new(TCPIP_THREAD_NAME, tcpip_thread, NULL, TCPIP_THREAD_STACKSIZE, TCPIP_THREAD_PRIO);//åˆ›å»ºå†…æ ¸è¿›ç¨‹
 }
 
 /**

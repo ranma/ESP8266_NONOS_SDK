@@ -5,7 +5,7 @@ AT firmware becomes larger since it supports more functions. So, we provide two 
 * Nano AT, ESP8266_NONOS_SDK/examples/at_nano, supports 1MB flash, uses SSL lib which supports less cipher suites.
 It is suggested to use normal AT, if your flash size is 2MB or larger.
 
-1°¢compile options
+1„ÄÅcompile options
 
 (1) COMPILE
     Possible value: gcc
@@ -41,7 +41,7 @@ It is suggested to use normal AT, if your flash size is 2MB or larger.
 For example:
     make COMPILE=gcc BOOT=new APP=1 SPI_SPEED=40 SPI_MODE=QIO SPI_SIZE_MAP=0
 
-2°¢You can also use gen_misc to make and generate specific bin you needed.
+2„ÄÅYou can also use gen_misc to make and generate specific bin you needed.
     Linux: ./gen_misc.sh
     Windows: gen_misc.bat
     Follow the tips and steps.
