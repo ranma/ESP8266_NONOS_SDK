@@ -164,7 +164,7 @@ def gen_appbin():
     fp.close()
 
     entry_addr = None
-    p = re.compile('(\w*)(\sT\s)(call_user_start)$')
+    p = re.compile('(\w*)(\s(T|W)\s)(call_user_start)$')
     for line in lines:
         m = p.search(line)
         if m != None:
