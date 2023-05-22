@@ -45,9 +45,23 @@ KEEP_LOCAL = \
 	wpa_derive_ptk \
 	wpa_parse_generic
 
+REDEFINE_ETS_SYMS = \
+	bzero \
+	memcmp \
+	memcpy \
+	memset \
+	memmove \
+	strcmp \
+	strcpy \
+	strlen \
+	strncmp \
+	strncpy \
+	strstr \
+
 EMPTY :=
 SPACE := $(EMPTY) $(EMPTY)
 KEEP_LOCAL_RE = $(subst $(SPACE),|,$(KEEP_LOCAL))
+REDEFINE_SYMS_F = $(shell for s in $(REDEFINE_ETS_SYMS); do echo "--redefine-sym ets_$$s=$$s"; done)
 
 
 # Globalize and weaken the symbols
@@ -57,4 +71,7 @@ KEEP_LOCAL_RE = $(subst $(SPACE),|,$(KEEP_LOCAL))
 		cut -d" " -f1 | \
 		grep -E -v "^($(KEEP_LOCAL_RE))$$" | \
 		sort -u > $(@:.a=.sym)
-	$(OBJCOPY) --globalize-symbols $(@:.a=.sym) --weaken $< $@
+	$(OBJCOPY) \
+		$(REDEFINE_SYMS_F) \
+		--globalize-symbols $(@:.a=.sym) \
+		--weaken $< $@
