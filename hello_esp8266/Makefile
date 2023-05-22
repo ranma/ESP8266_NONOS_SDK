@@ -27,6 +27,7 @@ GEN_BINS= eagle.app.v6.bin
 SPECIAL_MKTARGETS=$(APP_MKTARGETS)
 SUBDIRS= \
     ../lib/weak \
+    ../third_party/relib \
     ../third_party/lwip \
     user \
     lwip1 \
@@ -55,6 +56,7 @@ endif
 COMPONENTS_eagle.app.v6 = \
     user/libuser.a \
     lwip1/liblwip1.a \
+    ../third_party/relib/librelib.a \
     ../third_party/lwip/liblwip.a
 
 LINKFLAGS_eagle.app.v6 = \
