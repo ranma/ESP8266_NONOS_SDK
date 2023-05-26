@@ -97,9 +97,26 @@ _panic:
 call_user_start_local:
 	l32r	a0, .l_text_start
 	wsr	a0, VECBASE
+
+	/* Load some constants we need */
+	movi	a0, 1
+	slli	a3, a0, 29  /* 0x2000000 as increment */
+	add.n	a1, a3, a3  /* set SP to 0x40000000 to maximise stack size */
+	add.n	a2, a1, a1  /* 0x8000000 as base */
+
+	/* re-confgiure region protect for addresses >= 0x80000000 to fault on access */
+	/* ROM has already set up good values for the other ranges */
+	movi.n	a4, 0xf
+_region_protect_loop:
+	or	a0, a2, a4  /* 0x?00000f as value */
+	witlb	a0, a2
+	wdtlb	a0, a2
+	add	a2, a2, a3  /* increment base */
+	bnez	a2, _region_protect_loop
+	isync
+
 	l32r	a0, .l_user_start
 	callx0	a0
-	movi	a0, 1
-	slli	a1, a0, 30  /* set SP to 0x40000000 to maximise stack size */
+
 	l32r	a0, .l_ets_run
 	jx	a0
