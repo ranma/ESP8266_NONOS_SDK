@@ -5,7 +5,7 @@ on:
   push:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-linux:
@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 2  # Include previous commit in checkout
 
       - name: Install dependencies
         run: |
@@ -53,3 +55,18 @@ jobs:
          while read name size addr; do \
            echo "| ${name} | ${size} |"; \
          done < section_sizes.txt >> $GITHUB_STEP_SUMMARY
+
+      - name: 'Get last commit hash'
+        id: commit_hash
+        run: |
+          echo "PREVIOUS_COMMIT=$(git log -1 --skip=1 --format=%H)" >> $GITHUB_OUTPUT
+
+      - name: 'Size compare'
+        uses: ranma/size-compare@4c577465a22e53ea89dc52aa4f9487a228b966e3
+        with:
+          gist_id: ae30f1d0c8931ecb53ac1bd29b842158
+          gist_token: ${{ secrets.SIZE_COMPARE_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          compare_against: ${{ steps.commit_hash.outputs.PREVIOUS_COMMIT }}
+          files: |
+            bin/eagle.*.bin
