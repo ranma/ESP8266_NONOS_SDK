@@ -25,8 +25,9 @@ endif
 #   makefile at its root level - these are then overridden
 #   for a subtree within the makefile rooted therein
 #
-#DEFINES += 
-#CCFLAGS += -DPBUF_RSV_FOR_WLAN -DEBUF_LWIP
+#DEFINES +=
+#CCFLAGS +=
+CCFLAGS += -std=gnu11
 
 #############################################################
 # Recursion Magic - Don't touch this!!

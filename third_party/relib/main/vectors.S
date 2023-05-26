@@ -79,7 +79,7 @@ _ResetVector: /* really unused here, since reset should jump to ROM directly */
 
 .section .text,"ax"
 .literal_position
-	.literal .l_user_start, user_start
+	.literal .l_user_start, relib_user_start
 	.literal .l_ets_run, ets_run
 	.literal .l_panic_stack, 0x40000000
 	.literal .l_panic_handler, panic_handler
@@ -99,5 +99,7 @@ call_user_start_local:
 	wsr	a0, VECBASE
 	l32r	a0, .l_user_start
 	callx0	a0
+	movi	a0, 1
+	slli	a1, a0, 30  /* set SP to 0x40000000 to maximise stack size */
 	l32r	a0, .l_ets_run
 	jx	a0
