@@ -15,6 +15,7 @@ ifndef PDIR
 
 UP_EXTRACT_DIR = ..
 GEN_LIBS = libmain.a
+COMPONENTS_libmain =
 
 endif
 

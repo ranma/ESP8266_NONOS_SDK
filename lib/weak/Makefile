@@ -58,6 +58,8 @@ REDEFINE_ETS_SYMS = \
 	strncpy \
 	strstr \
 
+OBJ_REMOVE_libmain.a = mem_manager.o
+
 EMPTY :=
 SPACE := $(EMPTY) $(EMPTY)
 KEEP_LOCAL_RE = $(subst $(SPACE),|,$(KEEP_LOCAL))
@@ -75,3 +77,4 @@ REDEFINE_SYMS_F = $(shell for s in $(REDEFINE_ETS_SYMS); do echo "--redefine-sym
 		$(REDEFINE_SYMS_F) \
 		--globalize-symbols $(@:.a=.sym) \
 		--weaken $< $@
+	$(AR) dv $@ $(OBJ_REMOVE_$(@))

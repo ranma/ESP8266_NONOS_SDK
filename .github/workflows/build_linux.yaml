@@ -62,7 +62,7 @@ jobs:
           echo "PREVIOUS_COMMIT=$(git log -1 --skip=1 --format=%H)" >> $GITHUB_OUTPUT
 
       - name: 'Size compare'
-        uses: ranma/size-compare@4c577465a22e53ea89dc52aa4f9487a228b966e3
+        uses: ranma/size-compare@09a448698844c9d6005d3e3601882d9aa8237883
         with:
           gist_id: ae30f1d0c8931ecb53ac1bd29b842158
           gist_token: ${{ secrets.SIZE_COMPARE_TOKEN }}

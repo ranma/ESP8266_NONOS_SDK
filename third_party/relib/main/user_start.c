@@ -8,6 +8,8 @@
 #include "spi_flash.h"
 
 #include "relib/esp8266.h"
+#include "relib/ets_rom.h"
+#include "relib/relib.h"
 
 #if 0
 #define DPRINTF(...) ets_printf(__VA_ARGS__)
@@ -86,17 +88,9 @@ static_assert(OFFSET_OF(ieee80211com_st, ic_profile) == 0x20c, "ic_profile offse
 
 extern ieee80211com_st g_ic; /* defined in ieee80211.c */
 
-extern SpiFlashChip *flashchip; // @0x3fffc714
-
-extern SpiFlashOpResult SPIRead(uint32_t faddr, void *dst, size_t size);
 extern bool system_correct_flash_map(void); /* always returns false, weak symbol? */
 extern int system_param_sector_start;
 extern int user_iram_memory_is_enabled(void);
-extern void ets_delay_us(int);
-extern void ets_install_putc1(void (*p)(char c));
-extern void ets_memcpy(void*, const void*, uint32_t);
-extern void ets_bzero(void*, uint32_t);
-extern void ets_printf(char*, ...);
 extern void phy_get_bb_evm(void);
 extern void rom_i2c_writeReg(uint8_t block, uint8_t host_id, uint8_t reg_add, uint8_t data);
 extern void spi_flash_clk_sel(int speed);
@@ -104,6 +98,7 @@ extern void uart_div_modify(uint8 uart_no, uint32 DivLatchValue);
 extern void user_local_init(void);
 extern void user_spi_flash_dio_to_qio_pre_init(void);
 extern void user_start(void);
+extern void user_uart_wait_tx_fifo_empty(uint32_t ch, uint32_t wait_micros);
 extern void user_uart_write_char(char c);
 extern uint8_t _bss_start;
 extern uint8_t _bss_end;

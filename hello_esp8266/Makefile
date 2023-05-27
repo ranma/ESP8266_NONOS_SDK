@@ -63,6 +63,7 @@ LINKFLAGS_eagle.app.v6 = \
     -L../lib/weak \
     -nostdlib \
     -T$(LD_FILE) \
+    -Wl,--verbose \
     -Wl,--no-check-sections \
     -Wl,--gc-sections \
     -u call_user_start \

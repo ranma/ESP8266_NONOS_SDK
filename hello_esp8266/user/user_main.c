@@ -90,6 +90,8 @@ user_init(void)
 	wifi_set_opmode(STATIONAP_MODE);
 
 	system_init_done_cb(init_done_cb);
+
+	system_show_malloc();
 }
 
 void ICACHE_FLASH_ATTR
