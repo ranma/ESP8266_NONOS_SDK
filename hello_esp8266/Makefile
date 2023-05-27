@@ -37,7 +37,7 @@ endif # } PDIR
 APPDIR = .
 LDDIR = ../ld
 
-CCFLAGS += -Os
+CCFLAGS += -Os -Werror
 
 TARGET_LDFLAGS = \
     -nostdlib \
@@ -63,6 +63,7 @@ LINKFLAGS_eagle.app.v6 = \
     -L../lib/weak \
     -nostdlib \
     -T$(LD_FILE) \
+    -Wl,-Map=eagle.app.map \
     -Wl,--verbose \
     -Wl,--no-check-sections \
     -Wl,--gc-sections \

@@ -26,6 +26,28 @@ enum irq_num {
 	FRC2_IRQ = 10,
 };
 
+struct uart_regs {
+	REG32(FIFO);      //  0x00
+	REG32(INT_RAW);   //  0x04
+	REG32(INT_ST);    //  0x08
+	REG32(INT_ENA);   //  0x0C
+	REG32(INT_CLR);   //  0x10
+	REG32(CLKDIV);    //  0x14
+	REG32(AUTOBAUD);  //  0x18
+	REG32(STATUS);    //  0x1C
+	REG32(CONF0);     //  0x20
+	REG32(CONF1);     //  0x24
+	REG32(LOWPULSE);  //  0x28
+	REG32(HIGHPULSE); //  0x2C
+	REG32(PULSE_NUM); //  0x30
+	uint32_t res[(0x78-0x34)/4];
+	REG32(DATE);      //  0x78
+	REG32(ID);        //  0x7C
+};
+
+#define UART0 ((struct uart_regs *) 0x60000000)
+#define UART1 ((struct uart_regs *) 0x60000f00)
+
 #define SPI_CK_I_EDGE BIT(6)
 
 struct spi_regs {
@@ -84,6 +106,117 @@ struct gpio_regs {
 };
 
 #define GPIO ((struct gpio_regs *) 0x60000300)
+
+struct rtc_regs {
+	REG32(SW_RESET);  // 0x000    Set bit31 to reset CPU
+	REG32(SLP_VAL);   // 0x004    the target value of RTC_COUNTER for wakeup from light-sleep/deep-sleep
+	REG32(SLP_CTL);   // 0x008    bit20/bit21 fiddled in rtc_enter_sleep/rtc_get_reset_reason
+	uint32_t res1;
+	REG32(RESET_CTL); // 0x010    used by rom_phy_reset_req
+	union {           // 0x014
+		REG32(STATE1);
+		REG32(RESET_HW_CAUSE_REG);  // bits 0-3
+	};
+	union {           // 0x018
+		REG32(STATE2);
+		REG32(WAKEUP_HW_CAUSE_REG);  // bits 8-13
+	};
+	REG32(SLP_CNT_VAL); // 0x01c
+	REG32(INT_ENA);   // 0x020
+	REG32(INT_CLR);   // 0x024
+	uint32_t res2[(0x30-0x28)/4];
+	REG32(STORE[4]);      // 0x030
+	uint32_t res3[(0x68-0x40)/4];
+	REG32(GPIO_OUT);      // 0x068
+	uint32_t res4[(0x74-0x6c)/4];
+	REG32(GPIO_ENABLE);   // 0x074
+	uint32_t res5[(0x8c-0x78)/4];
+	REG32(GPIO_IN_DATA);  // 0x08c
+	REG32(GPIO_CONF);     // 0x090
+	uint32_t res6[(0xa0-0x94)/4];
+	REG32(XPD_DCDC_CONF); // 0x0a0
+};
+#define RTC ((struct rtc_regs *) 0x60000700)
+
+struct wdt_regs {
+	REG32(CTL);    // 0x000
+	REG32(OP);     // 0x004
+	REG32(OP_ND);  // 0x008
+	uint32_t res[(0x14-0x0c)/4];
+	REG32(RST);    // 0x014
+};
+#define WDT ((struct wdt_regs *) 0x60000900)
+
+struct rtc_mem {
+	REG32(BACKUP[64]); // 0x000, 256 bytes */
+	REG32(SYSTEM[64]); // 0x100, 256 bytes */
+	REG32(USER[128]);  // 0x200, 512 bytes */
+};
+#define RTCMEM ((struct rtc_mem *) 0x60001000)
+
+struct iomux_regs {
+	/* CONF bit 8: SPI0_CLK_EQU_SYS_CLK */
+	/* CONF bit 9: SPI:_CLK_EQU_SYS_CLK */
+	volatile uint32_t CONF;
+	union {
+		volatile uint32_t MUX[16];
+		struct {
+	REG32(GPIO12); /* 0: MTDI;    1: I2SI_DATA; 2: HSPIQ_MISO; 3: GPIO12; 4: UART0_DTR */
+	REG32(GPIO13); /* 0: MTCK;    1: I2SI_BCK;  2: HSPID_MOSI; 3: GPIO13; 4: UART0_CTS */
+	REG32(GPIO14); /* 0: MTMS;    1: I2SI_WS;   2: HSPI_CLK;   3: GPIO14; 4: UART0_DSR */
+	REG32(GPIO15); /* 0: MTDO;    1: I2SO_BCK;  2: HSPI_CS0;   3: GPIO15; 4: U0RTS */
+	REG32(GPIO3);  /* 0: U0RXD;   1: I2SO_DATA;                3: GPIO3;  4: CLK_XTAL_BK */
+	REG32(GPIO1);  /* 0: U0TXD;   1: SPICS1;                   3: GPIO1;  4: CLK_RTC_BK */
+	REG32(GPIO6);  /* 0: SDCLK;   1: SPICLK;                   3: GPIO6;  4: UART1_CTS */
+	REG32(GPIO7);  /* 0: SDDATA0; 1: SPIQ_MISO;                3: GPIO7;  4: U1TXD */
+	REG32(GPIO8);  /* 0: SDDATA1; 1: SPID_MOSI;                3: GPIO8;  4: U1RXD */
+	REG32(GPIO9);  /* 0: SDDATA2; 1: SPIHD;                    3: GPIO9;  4: HSPIHD */
+	REG32(GPIO10); /* 0: SDDATA3; 1: SPIWP;                    3: GPIO10; 4: HSPIWP */
+	REG32(GPIO11); /* 0: SDCMD;   1: SPICS0;                   3: GPIO11; 4: U1RTS */
+	REG32(GPIO0);  /* 0: GPIO0;   1: SPICS2;                              4: CLK_OUT */
+	REG32(GPIO2);  /* 0: GPIO2;   1: I2SO_WS;   2: U1TXD_BK;              4: U0TXD_BK */
+	REG32(GPIO4);  /* 0: GPIO4:   1: CLK_XTAL */
+	REG32(GPIO5);  /* 0: GPIO5;   1: CLK_RTC */
+		};
+	};
+};
+
+#define IOMUX ((struct iomux_regs *) 0x60000800)
+
+
+struct dport_regs {
+	volatile uint32_t NMI_INT_ENABLE;
+	volatile uint32_t EDGE_INT_ENABLE;
+	volatile uint32_t unknown_0x8;
+	volatile uint32_t CACHE_FLASH_CTRL;
+	volatile uint32_t unknown_0x10;
+	volatile uint32_t CTL;
+	/* void clockgate_watchdog(flg) { if(flg) 0x3FF00018 &= 0x77 else 0x3FF00018 |= 8; }
+	   system_restart_core: _DAT_3ff00018 = >_DAT_3ff00018 & 0xffff8aff; */
+	volatile uint32_t CLOCK_GATE;  /* probably */
+	volatile uint32_t unknown_0x1c;
+	volatile uint32_t INT_STATUS;
+	volatile uint32_t SPI_CACHE_CTL;
+	/*
+	#define IOSWAPU   0 //Swaps UART
+	#define IOSWAPS   1 //Swaps SPI
+	#define IOSWAPU0  2 //Swaps UART 0 pins (u0rxd <-> u0cts), (u0txd <-> u0rts)
+	#define IOSWAPU1  3 //Swaps UART 1 pins (u1rxd <-> u1cts), (u1txd <-> u1rts)
+	#define IOSWAPHS  5 //Sets HSPI with higher prio
+	#define IOSWAP2HS 6 //Sets Two SPI Masters on HSPI
+	#define IOSWAP2CS 7 //Sets Two SPI Masters on CSPI
+	*/
+	volatile uint32_t PERI_IO_SWAP;
+	volatile uint32_t SLC_TX_DESC_DEBUG_REG;
+};
+
+#define DPORT ((struct dport_regs *) 0x3ff00000)
+
+struct efuse_regs {
+	REG32(DATA[4]);
+};
+
+#define EFUSE ((struct efuse_regs *) 0x3ff00050)
 
 #ifdef __cplusplus
 }

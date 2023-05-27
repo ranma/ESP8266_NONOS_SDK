@@ -6,13 +6,23 @@
 #include <assert.h>
 #include "c_types.h"
 #include "spi_flash.h"
+#include "osapi.h"
+#include "mem.h"
 
 #include "relib/esp8266.h"
 #include "relib/ets_rom.h"
 #include "relib/relib.h"
+#include "relib/efuse_register.h"
+
+#define BOOT_CLK_FREQ   52000000
+#define NORMAL_CLK_FREQ 80000000
+#define UART_BAUDRATE   115200
 
 #if 0
-#define DPRINTF(...) ets_printf(__VA_ARGS__)
+#define DPRINTF(...) do { \
+	ets_printf(__VA_ARGS__); \
+	while ((UART0->STATUS & 0xff0000) != 0); \
+} while (0)
 #else
 #define DPRINTF(...)
 #endif
@@ -66,42 +76,190 @@ typedef struct __attribute__((packed)) {
 static_assert(sizeof(boot_hdr_param_st) == 8, "boot_hdr_param size mismatch");
 
 typedef struct __attribute__((packed)) {
+	/* shallow struct def to avoid pulling in all the other struct members */
 	union {
-		boot_hdr_param_st boot_hdr_param;
 		uint8_t pad1[0x4a4];
+		struct {
+			boot_hdr_param_st boot_hdr_param;
+			uint8_t opmode;
+		};
+		struct {
+			uint8_t pad2[1170];
+			uint8_t mac_bakup[6];
+		};
 	};
 } wl_profile_st;
 static_assert(sizeof(wl_profile_st) == 0x4a4, "wl_profile size mismatch");
+static_assert(OFFSET_OF(wl_profile_st, opmode) == 8, "opmode offset mismatch");
+static_assert(OFFSET_OF(wl_profile_st, mac_bakup) == 1170, "mac_bakup offset mismatch");
+
+struct netif;
 
 typedef struct __attribute__((packed)) {
+	/* shallow struct def to avoid pulling in all the other struct members */
+	union {
+		uint8_t pad[672];
+		struct netif *ni_ifp;
+	};
+} ieee80211_conn_st;
+static_assert(sizeof(ieee80211_conn_st) == 672, "ieee80211_conn size mismatch");
+
+typedef struct __attribute__((packed)) {
+	/* shallow struct def to avoid pulling in all the other struct members */
 	union {
 		uint8_t pad1[0x6b4];
 		struct {
 			uint8_t pad2[0x20c];
 			wl_profile_st ic_profile;
 		};
+		struct {
+			uint8_t pad3[478];
+			uint8_t ic_mode;
+			uint8_t phy_function;
+		};
+		struct {
+			uint8_t pad4[16];
+			ieee80211_conn_st *ic_if0_conn;
+			ieee80211_conn_st *ic_if1_conn;
+		};
 	};
 } ieee80211com_st;
 static_assert(sizeof(ieee80211com_st) == 0x6b4, "ieee80211com size mismatch");
-
+static_assert(OFFSET_OF(ieee80211com_st, ic_mode) == 478, "ic_mode offset mismatch");
+static_assert(OFFSET_OF(ieee80211com_st, phy_function) == 479, "phy_function offset mismatch");
 static_assert(OFFSET_OF(ieee80211com_st, ic_profile) == 0x20c, "ic_profile offset mismatch");
 
-extern ieee80211com_st g_ic; /* defined in ieee80211.c */
+typedef struct __attribute__((packed)) {
+	uint32_t addr;
+} ip_addr_st;
+static_assert(sizeof(ip_addr_st) == 4, "ip_addr size mismatch");
 
-extern bool system_correct_flash_map(void); /* always returns false, weak symbol? */
-extern int system_param_sector_start;
-extern int user_iram_memory_is_enabled(void);
-extern void phy_get_bb_evm(void);
-extern void rom_i2c_writeReg(uint8_t block, uint8_t host_id, uint8_t reg_add, uint8_t data);
-extern void spi_flash_clk_sel(int speed);
-extern void uart_div_modify(uint8 uart_no, uint32 DivLatchValue);
-extern void user_local_init(void);
-extern void user_spi_flash_dio_to_qio_pre_init(void);
-extern void user_start(void);
-extern void user_uart_wait_tx_fifo_empty(uint32_t ch, uint32_t wait_micros);
-extern void user_uart_write_char(char c);
+typedef struct __attribute__((packed)) {
+	ip_addr_st ip;
+	ip_addr_st netmask;
+	ip_addr_st gw;
+} ip_info_st;
+static_assert(sizeof(ip_info_st) == 12, "ip_info size mismatch");
+
+typedef struct __attribute__((packed)) {
+	ip_info_st softap_info;
+	ip_info_st sta_info;
+	uint8 softap_mac[6];
+	uint8 sta_mac[6];
+} if_param_st;
+static_assert(sizeof(if_param_st) == 0x24, "if_param size mismatch");
+
+typedef struct {
+	uint32_t flag;
+	uint32_t exccause;
+	uint32_t epc1;
+	uint32_t epc2;
+	uint32_t epc3;
+	uint32_t excvaddr;
+	uint32_t depc;
+} rst_info_st;
+static_assert(sizeof(rst_info_st) == 0x1c, "rst_info size mismatch");
+
+typedef struct __attribute__((packed)) {
+	/* shallow struct def to avoid pulling in all the other struct members */
+	union {
+		struct {
+			uint8_t param_ver_id;
+			uint8_t pad1[107];
+		};
+	};
+} phy_init_ctrl_st;
+static_assert(sizeof(phy_init_ctrl_st) == 108, "phy_init_ctrl size mismatch");
+
+typedef struct __attribute__((packed)) {
+	union {
+		uint8_t pad[0x274];
+		struct {
+			uint8_t pad1[0x80];
+			uint8_t rx_gain_dc_table[0x100]; /* exact size not yet clear */
+		};
+	};
+} rf_cal_st;
+static_assert(sizeof(rf_cal_st) == 0x274, "rf_cal size mismatch");
+
+typedef struct __attribute__((packed)) {
+	union {
+		phy_init_ctrl_st phy_init;
+		uint8_t pad1[0x80];
+	};
+	union {
+		rf_cal_st rf_cal;
+	};
+} phy_init_and_rf_cal_st;
+static_assert(sizeof(phy_init_and_rf_cal_st) == (0x2f4), "phy_init_and_rf_cal_st size mismatch");
+static_assert(OFFSET_OF(phy_init_and_rf_cal_st, rf_cal.rx_gain_dc_table) == 0x100, "rx_gain_dc_table offset mismatch");
+
+bool system_correct_flash_map(void); /* always returns false, weak symbol? */
+bool system_rtc_mem_read(uint8_t src_addr, void *des_addr, uint16_t load_size);
+bool system_rtc_mem_write(uint8_t des_addr, const void *src_addr, uint16_t save_size);
+int flash_data_check(uint8_t *src);
+int phy_check_data_table(void * gdctbl, int x, int flg);
+int read_macaddr_from_otp(uint8_t *mac);
+int system_param_sector_start;
+int user_iram_memory_is_enabled(void);
+int wifi_mode_set(int mode);
+int wifi_station_start(void);
+int wifi_softap_start(int);
+int wifi_softap_stop(int);
+bool wifi_station_connect(void);
+uint8_t wifi_station_get_auto_connect(void);
+uint8_t esp_crc8(uint8_t *src, int len);
+void chip_init(phy_init_and_rf_cal_st *init_data, uint8_t *mac);
+void chip_v6_set_chan_offset(int, int);
+void espconn_init(void);
+void ets_timer_init(void);
+void load_non_32_wide_handler(xtos_exception_frame_t *ef, int cause);
+void lwip_init(void);
+void netif_set_default(struct netif *netif);
+void phy_afterwake_set_rfoption(int opt);
+void phy_get_bb_evm(void);
+void rom_i2c_writeReg(uint8_t block, uint8_t host_id, uint8_t reg_add, uint8_t data);
+void sleep_reset_analog_rtcreg_8266(void);
+void spi_flash_clk_sel(int speed);
+void sys_check_timeouts(void *timer_arg);
+void system_save_sys_param(void);
+void system_uart_de_swap(void);
+void system_uart_swap(void);
+void system_restart_local(void);
+void uart_div_modify(uint8 uart_no, uint32 DivLatchValue);
+void user_fatal_exception_handler(xtos_exception_frame_t *ef, int cause);
+void user_init(void);
+void user_init_default_profile(void);
+void user_local_init(void);
+void user_pre_init(void);
+void user_spi_flash_dio_to_qio_pre_init(void);
+void user_start(void);
+void user_uart_wait_tx_fifo_empty(uint32_t ch, uint32_t wait_micros);
+void user_uart_write_char(char c);
+void wdt_init(int enable_hw_watchdog);
+void wifi_set_backup_mac(const uint8_t *src);
+void wifi_softap_cacl_mac(uint8_t *dst, const uint8_t *src);
+void write_data_to_rtc(uint8_t*);
+void get_data_from_rtc(uint8_t*);
+void wifi_param_save_protect_with_check(uint16_t startsector, int sectorsize, void *pdata, uint16_t len);
+
+typedef void (*init_done_cb_t)(void);
+
+extern rst_info_st rst_if; /* user_interface.o */
+extern if_param_st info; /* defined in app_main.c */
+extern ieee80211com_st g_ic; /* defined in ieee80211.c */
+extern uint16_t lwip_timer_interval; /* app_main.o */
 extern uint8_t _bss_start;
 extern uint8_t _bss_end;
+extern uint32_t system_phy_init_sector; /* app_main.o */
+extern uint32_t system_rf_cal_sector; /* app_main.o */
+extern ETSTimer check_timeouts_timer; /* app_main.o */
+extern uint8_t *phy_rx_gain_dc_table; /* phy_chip_v6.o */
+extern uint8_t freq_trace_enable; /* app_main.o */
+extern uint16_t TestStaFreqCalValInput; /* ieee80211_scan.o */
+extern uint16_t TestStaFreqCalValDev; /* ieee80211_scan.o */
+extern uint8_t user_init_flag; /* app_main.o */
+extern init_done_cb_t done_cb; /* user_interface.o */
 
 /* Cache_Read_Enable:
   mb_region = 0, odd_even = 0 -> map first 8Mbit of flash
@@ -115,6 +273,24 @@ extern uint8_t _bss_end;
 extern void Cache_Read_Enable(uint8_t odd_even, uint8_t mb_region, uint8_t cache_size);
 
 static bool cache_map;
+
+static void
+relib_reset_uart_baud(int clk)
+{
+	/* Wait for UART tx fifo to drain */
+	while ((UART0->STATUS & 0xff0000) != 0);
+#if 0
+	/* Upclock PLL to 80MHz AHB freq */
+	rom_i2c_writeReg(103, 4, 1, 0x88);
+	rom_i2c_writeReg(103, 4, 2, 0x91);
+	/* uart_div_modify also resets the fifos, but we already flushed it */
+	UART0->CLKDIV = NORMAL_CLK_FREQ / UART_BAUDRATE;
+	/* Wait a bit for clock to stabilize */
+	ets_delay_us(1000);
+#else
+	UART0->CLKDIV = clk / UART_BAUDRATE;
+#endif
+}
 
 static bool
 userbin_check(struct boot_hdr *bhdr)
@@ -161,6 +337,364 @@ init_bss_data(void)
 	ets_bzero(&_bss_start, &_bss_end - &_bss_start);
 }
 
+int ICACHE_FLASH_ATTR
+relib_read_macaddr_from_otp(uint8_t *mac) /* impl. from RTOS SDK */
+{
+	uint32_t efuse[4];
+
+	uint8_t efuse_crc = 0;
+	uint8_t calc_crc = 0;
+	uint8_t version;
+	uint8_t use_default = 1;
+
+	efuse[0] = EFUSE->DATA[0];
+	efuse[1] = EFUSE->DATA[1];
+	efuse[2] = EFUSE->DATA[2];
+	efuse[3] = EFUSE->DATA[3];
+
+	mac[3] = efuse[1] >> 8;
+	mac[4] = efuse[1];
+	mac[5] = efuse[0] >> 24;
+
+	if (efuse[2] & EFUSE_IS_48BITS_MAC) {
+		uint8_t tmp_mac[4];
+
+		mac[0] = efuse[3] >> 16;
+		mac[1] = efuse[3] >> 8;
+		mac[2] = efuse[3];
+
+		use_default = 0;
+
+		tmp_mac[0] = mac[2];
+		tmp_mac[1] = mac[1];
+		tmp_mac[2] = mac[0];
+
+		efuse_crc = efuse[2] >> 24;
+		calc_crc = esp_crc8(tmp_mac, 3);
+
+		if (efuse_crc != calc_crc)
+			use_default = 1;
+
+		if (!use_default) {
+			version = (efuse[1] >> EFUSE_VERSION_S) & EFUSE_VERSION_V;
+
+			if (version == EFUSE_VERSION_1 || version == EFUSE_VERSION_2) {
+				tmp_mac[0] = mac[5];
+				tmp_mac[1] = mac[4];
+				tmp_mac[2] = mac[3];
+				tmp_mac[3] = efuse[1] >> 16;
+
+				efuse_crc = efuse[0] >> 16;
+				calc_crc = esp_crc8(tmp_mac, 4);
+
+				if (efuse_crc != calc_crc)
+					use_default = 1;
+			}
+		}
+	}
+
+	if (use_default) {
+		mac[0] = 0x18;
+		mac[1] = 0xFE;
+		mac[2] = 0x34;
+	}
+
+	return 0;
+}
+
+#if 1
+void ICACHE_FLASH_ATTR
+relib_user_local_init(void)
+{
+	uint8_t bVar1;
+	char cVar2;
+	bool bVar3;
+	uint8_t uVar4;
+	int iVar5;
+	void *pv;
+	uint32_t uVar6;
+	phy_init_and_rf_cal_st *phy_rf_data;
+	char *rf_cal_data;
+	char cVar8;
+	char cVar9;
+
+	_xtos_set_exception_handler(9,user_fatal_exception_handler);
+	_xtos_set_exception_handler(0,user_fatal_exception_handler);
+	_xtos_set_exception_handler(2,user_fatal_exception_handler);
+	_xtos_set_exception_handler(3,load_non_32_wide_handler);
+	_xtos_set_exception_handler(0x1c,user_fatal_exception_handler);
+	_xtos_set_exception_handler(0x1d,user_fatal_exception_handler);
+	_xtos_set_exception_handler(8,user_fatal_exception_handler);
+	DPRINTF("sleep_reset_analog_rtcreg_8266\n");
+	sleep_reset_analog_rtcreg_8266();  /* resets clocks, so re-init uart after */
+	relib_reset_uart_baud(BOOT_CLK_FREQ);
+	user_pre_init();
+	iVar5 = read_macaddr_from_otp(info.sta_mac);
+	if (iVar5 == 0) {
+		iVar5 = memcmp(info.sta_mac,g_ic.ic_profile.mac_bakup,6);
+		if (iVar5 != 0) {
+			memcpy(g_ic.ic_profile.mac_bakup,info.sta_mac,6);
+			os_printf_plus("Backup\n");
+			system_save_sys_param();
+		}
+	}
+	else {
+		bVar1 = g_ic.ic_profile.mac_bakup[0] & 1;
+		if ((g_ic.ic_profile.mac_bakup[0] & 1) == 0) {
+			iVar5 = memcmp(info.sta_mac,g_ic.ic_profile.mac_bakup,6);
+			if (iVar5 == 0) {
+				os_printf_plus("Ce\n");
+			}
+			else if (bVar1 == 0) {
+				memcpy(info.sta_mac,g_ic.ic_profile.mac_bakup,6);
+				os_printf_plus("Load\n");
+			}
+		}
+		else {
+			if (iVar5 == -1) {
+				info.sta_mac[0] = '\\';
+				info.sta_mac[1] = 0xcf;
+				info.sta_mac[2] = '\x7f';
+			}
+			memcpy(g_ic.ic_profile.mac_bakup,info.sta_mac,6);
+			os_printf_plus("Backup default %d\n",iVar5);
+			system_save_sys_param();
+		}
+	}
+	wifi_set_backup_mac(info.sta_mac);
+	wifi_softap_cacl_mac(info.softap_mac, info.sta_mac);
+	info.softap_info.ip.addr = 0x104a8c0; /* 192.168.4.1 */
+	info.softap_info.gw.addr = 0x104a8c0;
+	info.softap_info.netmask.addr = 0xffffff;
+	DPRINTF("ets_timer_init\n");
+	ets_timer_init();
+	DPRINTF("lwip_init\n");
+	lwip_init();
+	espconn_init();
+	lwip_timer_interval = 25; /* 25ms */
+	ets_timer_setfn(&check_timeouts_timer,sys_check_timeouts,0);
+	DPRINTF("user_init_default_profile\n");
+	user_init_default_profile();
+	if ((DPORT->PERI_IO_SWAP & 1) == 0) {
+		system_uart_de_swap();
+	} else {
+		system_uart_swap();
+	}
+	uVar6 = RTC->STORE[0];
+	while ((UART0->STATUS & 0xff0000) != 0);
+	while ((UART1->STATUS & 0xff0000) != 0);
+	IOMUX->GPIO0 &= 0xfffffeff;  /* Switch from CLK_OUT to GPIO */
+	IOMUX->GPIO2 &= 0xfffffeff;  /* Switch from U0TXD_BK to GPIO */
+	system_rtc_mem_read(0,&rst_if,0x1c);
+	if (uVar6 == 0) {
+		uVar6 = rtc_get_reset_reason();
+		if (uVar6 == 1) {
+			memset(&rst_if,0,0x1c);
+		}
+		else {
+			uVar6 = rtc_get_reset_reason();
+			if (uVar6 == 2) {
+				if (((rst_if.flag != 5) || (rst_if.epc1 != 0)) || (rst_if.excvaddr != 0)) {
+					memset(&rst_if,0,0x1c);
+					rst_if.flag = 6;
+				}
+			}
+			else {
+				rtc_get_reset_reason();
+			}
+		}
+	}
+	else if (6 < uVar6) {
+		memset(&rst_if,0,0x1c);
+	}
+	system_rtc_mem_write(0,&rst_if,0x1c);
+	DPRINTF("read phy and rf cal data\n");
+	phy_rf_data = os_zalloc_dram(sizeof(*phy_rf_data));
+	spi_flash_read(flashchip->sector_size * system_phy_init_sector,(void*)phy_rf_data,0x80);
+	rf_cal_data = (void*)&phy_rf_data->rf_cal;
+	spi_flash_read(flashchip->sector_size * system_rf_cal_sector,(void*)rf_cal_data,0x274);
+	phy_rx_gain_dc_table = phy_rf_data->rf_cal.rx_gain_dc_table;
+	iVar5 = flash_data_check(rf_cal_data);
+	if ((iVar5 == 0) && (iVar5 = phy_check_data_table(phy_rx_gain_dc_table,0x7d,1), iVar5 == 0)) {
+		bVar3 = false;
+	}
+	else {
+		bVar3 = true;
+	}
+	if (rst_if.flag != 5) {
+		phy_afterwake_set_rfoption(1);
+	}
+	if ((rst_if.flag != 5) && (!bVar3)) {
+		write_data_to_rtc(rf_cal_data);
+	}
+	if (phy_rf_data->phy_init.param_ver_id == '\x05') {
+		cVar9 = '\v';
+		cVar2 = phy_rf_data->pad1[0x71];
+		if (freq_trace_enable == false) {
+			uVar6 = phy_rf_data->pad1[0x70];
+			if (((uVar6 < 2) && (-1 < (int)uVar6)) || (uVar6 == 3)) {
+LAB_4022f98c:
+				phy_rf_data->pad1[0x70] = '\0';
+			}
+			else {
+				cVar9 = '\a';
+				if (uVar6 == 5) {
+					if (-1 < cVar2) {
+						if (cVar2 < '\a') {
+							cVar9 = '\0';
+							phy_rf_data->pad1[0x71] = '\0';
+						}
+						else {
+							cVar9 = '\x05';
+						}
+					}
+				}
+				else if (uVar6 == 7) {
+					if (-1 < cVar2) {
+						cVar9 = '\0';
+						phy_rf_data->pad1[0x71] = '\0';
+					}
+				}
+				else if (uVar6 == 9) {
+					if (-1 < cVar2) {
+						if (cVar2 < '\a') {
+							cVar9 = '\0';
+							phy_rf_data->pad1[0x71] = '\0';
+						}
+						else {
+							cVar9 = '\x05';
+						}
+					}
+				}
+				else {
+					if (uVar6 != 0xb) goto LAB_4022f98c;
+					if (-1 < cVar2) {
+						cVar9 = '\0';
+						phy_rf_data->pad1[0x71] = '\0';
+					}
+				}
+				phy_rf_data->pad1[0x70] = cVar9;
+			}
+		}
+		else if (freq_trace_enable == true) {
+			bVar1 = phy_rf_data->pad1[0x70];
+			cVar8 = '\x03';
+			if ((1 < bVar1) && (bVar1 != 3)) {
+				if (bVar1 == 5) {
+					cVar8 = cVar9;
+					if ((-1 < cVar2) && (cVar8 = '\t', cVar2 < '\a')) {
+						phy_rf_data->pad1[0x71] = '\0';
+						cVar8 = '\x03';
+					}
+				}
+				else if (bVar1 == 7) {
+					cVar8 = cVar9;
+					if (-1 < cVar2) {
+						phy_rf_data->pad1[0x71] = '\0';
+						cVar8 = '\x03';
+					}
+				}
+				else if (bVar1 == 9) {
+					cVar8 = cVar9;
+					if (-1 < cVar2) {
+						if (cVar2 < '\a') {
+							phy_rf_data->pad1[0x71] = '\0';
+							cVar8 = '\x03';
+						}
+						else {
+							cVar8 = '\t';
+						}
+					}
+				}
+				else if ((bVar1 == 0xb) && (cVar8 = cVar9, -1 < cVar2)) {
+					phy_rf_data->pad1[0x71] = '\0';
+					cVar8 = '\x03';
+				}
+			}
+			phy_rf_data->pad1[0x70] = cVar8;
+		}
+		DPRINTF("chip_init\n");
+		chip_init(phy_rf_data, info.sta_mac);  /* resets clocks, so re-init uart */
+		relib_reset_uart_baud(NORMAL_CLK_FREQ);
+	}
+	else {
+		os_printf_plus("rf_cal[0] !=0x05,is 0x%02X\n");
+		ets_delay_us(10000);
+		system_restart_local();
+	}
+	g_ic.phy_function = (phy_rf_data->pad1[0x70] & 5U) == 1;
+	os_printf_plus("rf cal sector: %d\n",system_rf_cal_sector);
+	os_printf_plus("freq trace enable %d\n",freq_trace_enable);
+	os_printf_plus("rf[112] : %02x\n", phy_rf_data->pad1[0x70]);
+	os_printf_plus("rf[113] : %02x\n", phy_rf_data->pad1[0x71]);
+	os_printf_plus("rf[114] : %02x\n", phy_rf_data->pad1[0x72]);
+	if ((bVar3) &&
+		 (((rst_if.flag != 5 && (uVar6 = rtc_get_reset_reason(), uVar6 == 2)) ||
+			(uVar6 = rtc_get_reset_reason(), uVar6 == 1)))) {
+		os_printf_plus("w_flash\n");
+		get_data_from_rtc(rf_cal_data);
+		wifi_param_save_protect_with_check(
+			system_rf_cal_sector,
+			flashchip->sector_size,
+			rf_cal_data,
+			0x274);
+	}
+	vPortFree(phy_rf_data,"app_main.c",0x53b);
+	os_printf_plus("\nSDK ver: %s compiled @ Oct	9 2021 09:52:05\n",
+		"3.0.5(b29dcd3)");
+	uint32_t phy_ver = RTCMEM->BACKUP[0x7c/4];
+	uint32_t pp_ver = RTCMEM->SYSTEM[0xf8/4];
+	os_printf_plus("phy ver: %d_%d, pp ver: %d.%d\n\n",
+		(phy_ver >> 0x10) & 0xfff, phy_ver >> 0x1c,
+		(pp_ver & 0xff00) >> 8, pp_ver & 0xff);
+	if ((g_ic.phy_function & 1) != 0) {
+		uint32_t freq_cal = RTCMEM->BACKUP[0x78/4];
+		if (rst_if.flag == 5) {
+			TestStaFreqCalValInput = freq_cal >> 0x10;
+			chip_v6_set_chan_offset(1, TestStaFreqCalValInput);
+			TestStaFreqCalValDev = TestStaFreqCalValInput;
+		}
+		else {
+			TestStaFreqCalValInput = 0;
+			RTCMEM->BACKUP[0x78/4] = freq_cal & 0xffff;
+		}
+	}
+	system_rtc_mem_write(0,pv,0x1c);
+	vPortFree(pv,"app_main.c",0x571);
+	wdt_init(1);
+	user_init();
+	ets_timer_disarm(&check_timeouts_timer);
+	ets_timer_arm_new(&check_timeouts_timer,lwip_timer_interval,1,1);
+	uVar4 = g_ic.ic_profile.opmode;
+	WDT->RST = 0x73;  /* WDT_FEED() */
+	user_init_flag = 1;
+	wifi_mode_set(g_ic.ic_profile.opmode);
+	if ((uVar4 == '\x01') || (uVar4 == '\x03')) {
+		wifi_station_start();
+	}
+	if (uVar4 == '\x02') {
+		if (g_ic.ic_mode == '\x02') {
+			wifi_softap_start(1);
+			goto LAB_4022f927;
+		}
+	}
+	else if (uVar4 != '\x03') goto LAB_4022f927;
+	wifi_softap_start(0);
+LAB_4022f927:
+	if (uVar4 == '\x01') {
+		netif_set_default(g_ic.ic_if0_conn->ni_ifp);
+	}
+	iVar5 = wifi_station_get_auto_connect();
+	if (iVar5 == 1) {
+		wifi_station_connect();
+	}
+	if (done_cb != (init_done_cb_t)0x0) {
+		done_cb();
+	}
+	return;
+}
+#endif
+
 void
 relib_user_start(void)
 {
@@ -173,13 +707,8 @@ relib_user_start(void)
 	int flash_size;
 	int strap = (GPIO->IN >> 16) & 7;
 
-#if 0
-	/* Upclock PLL to 80MHz AHB freq (fixes serial baud rate) */
-	rom_i2c_writeReg(103, 4, 1, 0x88);
-	rom_i2c_writeReg(103, 4, 2, 0x91);
-	/* Wait a bit for clock to stabilize */
-	ets_delay_us(1000);
-#endif
+	/* early uart baud init */
+	relib_reset_uart_baud(BOOT_CLK_FREQ);
 
 	/* From https://github.com/esp8266/Arduino/issues/8657 this is
 	 * related to flash compatibility (`fix_cache_bug` in the NONOS SDK). */
@@ -199,7 +728,7 @@ relib_user_start(void)
 	DPRINTF("  status_mask=%08x\n", flashchip->status_mask);
 
 	SPIRead(0, (void*)&flash_hdr, sizeof(flash_hdr));
-	DPRINTF("flash_hdr: id=%02x bank=%d segs=%d spiif=%d freq=%d size=%d\n",
+	DPRINTF("flash_hdr: id=%02x segs=%d spiif=%d freq=%d size=%d\n",
 		flash_hdr.id,
 		flash_hdr.number_segs,
 		flash_hdr.spi_interface,
@@ -344,5 +873,9 @@ relib_user_start(void)
 		user_spi_flash_dio_to_qio_pre_init();
 	}
 
+#if 1
+	relib_user_local_init();
+#else
 	user_local_init();
+#endif
 }
