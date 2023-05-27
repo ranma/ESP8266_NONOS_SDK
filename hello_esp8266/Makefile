@@ -135,3 +135,8 @@ FORCE:
 flash:
 	esptool -p /dev/ttyUSB0 write_flash 0x0 ../bin/eagle.flash.bin 0x10000 ../bin/eagle.irom0text.bin
 
+$(IMAGEODIR)/iram.out: $(OIMAGES)
+	$(OBJCOPY) --only-section=.text $< $@
+
+iramsize.txt: $(IMAGEODIR)/iram.out
+	$(NM) --size-sort $< > $@

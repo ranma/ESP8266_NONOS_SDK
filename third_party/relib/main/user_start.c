@@ -261,6 +261,16 @@ extern uint16_t TestStaFreqCalValDev; /* ieee80211_scan.o */
 extern uint8_t user_init_flag; /* app_main.o */
 extern init_done_cb_t done_cb; /* user_interface.o */
 
+#if 0
+/* Test: These support functions for ISSI and GD25Q32C are not small.
+ * Since my flash is Winbond, it should work fine wihtout them.
+ * This reduces the irom0text size from 28928 to 27696 (~1.2KiB / 4.2%).
+ */
+void spi_flash_issi_enable_QIO_mode(void) { }
+void flash_gd25q32c_read_status(void) { }
+void flash_gd25q32c_write_status(void) { }
+#endif
+
 /* Cache_Read_Enable:
   mb_region = 0, odd_even = 0 -> map first 8Mbit of flash
   mb_region = 0, odd_even = 1 -> map second 8Mbit of flash
