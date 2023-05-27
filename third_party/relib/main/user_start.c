@@ -261,7 +261,7 @@ extern uint16_t TestStaFreqCalValDev; /* ieee80211_scan.o */
 extern uint8_t user_init_flag; /* app_main.o */
 extern init_done_cb_t done_cb; /* user_interface.o */
 
-#if 0
+#if 1
 /* Test: These support functions for ISSI and GD25Q32C are not small.
  * Since my flash is Winbond, it should work fine wihtout them.
  * This reduces the irom0text size from 28928 to 27696 (~1.2KiB / 4.2%).

@@ -38,12 +38,10 @@ jobs:
           make iramsize.txt && cp iramsize.txt ../../iramsize.head
           make clean
           git checkout HEAD~1
-          make
-          make iramsize.txt && cp iramsize.txt ../../iramsize.previous
-          ls -l ../../iramsize.{previous,head}
-          diff -u ../../iramsize.{previous,head}
+          make || true
+          make iramsize.txt && cp iramsize.txt ../../iramsize.previous || true
           echo "### Symbol size diff:" >> $GITHUB_STEP_SUMMARY
-          diff -u ../../iramsize.{previous,head} | sed 's/^/    /' >> $GITHUB_STEP_SUMMARY
+          (diff -u ../../iramsize.{previous,head} | sed 's/^/    /' || true) >> $GITHUB_STEP_SUMMARY
 
       - name: 'Upload Artifact'
         uses: actions/upload-artifact@v3
