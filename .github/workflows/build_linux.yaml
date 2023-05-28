@@ -31,13 +31,24 @@ jobs:
           ./xtensa-lx106-elf/bin/xtensa-lx106-elf-gcc -v
           echo ${PWD}/xtensa-lx106-elf/bin/ >> $GITHUB_PATH
 
-      - name: Test build
+      - name: Test build hello_nolwip
+        run: |
+          cd hello_nolwip
+          make clean
+          make
+
+      - name: Test build hello_esp8266
         run: |
           cd hello_esp8266
+          make clean
           make
           make iramsize.txt && cp iramsize.txt ../../iramsize.head
-          make clean
+
+      - name: Test build hello_esp8266 at previous commit
+        run: |
+          cd hello_esp8266
           git checkout HEAD~1
+          make clean
           make || true
           make iramsize.txt && cp iramsize.txt ../../iramsize.previous || true
           echo "### Symbol size diff:" >> $GITHUB_STEP_SUMMARY
