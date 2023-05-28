@@ -100,6 +100,30 @@ struct lldesc {
 	struct lldesc * stqe_next;
 };
 
+/*
+ * 9632 Byte of static RX buffer @_wdev_rx_mblk_space
+ * 80 Byte of static RX dma descriptors @_wdev_rx_desc_space
+ * Since a descriptor is 3 32bit word (12 bytes), we can
+ * fit 6 descriptors into those 80 bytes, giving about 1605 bytes
+ * per RX buffer.
+ *
+ * Additionally, looking at received payload pointers we can
+ * deduce that the actual raw RX buffer size is 1604 bytes, as
+ * that is the granularity of the pointer differnces, e.g.:
+ * 3FFEA67E-3FFEA03A => 1604
+ * 3FFEACC2-3FFEA03A => 3208
+ * 3FFEB94A-3FFEA03A => 6416
+ *
+ * While the code comment says the MAC header is 32bytes, that only
+ * seems to be true for 802.11abg dn for 802.11n it is 36bytes.
+ * Together with the WPA2+CCMP 16 byte encryption header this
+ * would then exactly match the presumed 50 bytes.
+ *
+ * Also it looks like the maximum MTU for 802.11 without headers
+ * is 2304 bytes, but there pretty much isn't enough space for
+ * that in this setup.
+ */
+
 struct pbuf;
 struct target_rc;
 struct esf_tx_desc;
