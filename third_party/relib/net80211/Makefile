@@ -12,11 +12,11 @@
 #     a generated lib/image xxx.a ()
 #
 ifndef PDIR
+
 UP_EXTRACT_DIR = ..
-GEN_LIBS = librelib.a
-COMPONENTS_librelib = \
-	main/libmain.a \
-	net80211/libnet80211.a
+GEN_LIBS = libnet80211.a
+COMPONENTS_libmain =
+
 endif
 
 
@@ -28,8 +28,6 @@ endif
 #   for a subtree within the makefile rooted therein
 #
 #DEFINES +=
-#CCFLAGS +=
-CCFLAGS += -std=gnu11
 
 #############################################################
 # Recursion Magic - Don't touch this!!
@@ -47,4 +45,3 @@ INCLUDES := $(INCLUDES) -I $(PDIR)include
 INCLUDES += -I ./
 PDIR := ../$(PDIR)
 sinclude $(PDIR)Makefile
-

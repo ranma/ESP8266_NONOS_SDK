@@ -2,6 +2,7 @@
 #include "c_types.h" /* for ICACHE_FLASH_ATTR */
 #include "mem.h"
 #include "osapi.h"
+#include "relib/s/lwip1_pbuf.h"
 
 #define DPRINT(msg) do { \
 	uint32_t caller = (uint32_t)__builtin_return_address(0); \
@@ -87,19 +88,6 @@
  */
 #define EP_OFFSET 36
 
-struct lldesc;
-
-struct lldesc {
-	uint32_t size:12;
-	uint32_t length:12;
-	uint32_t offset:5;
-	uint32_t sosf:1;
-	uint32_t eof:1;
-	uint32_t owner:1;
-	uint8_t *buf;
-	struct lldesc * stqe_next;
-};
-
 /*
  * 9632 Byte of static RX buffer @_wdev_rx_mblk_space
  * 80 Byte of static RX dma descriptors @_wdev_rx_desc_space
@@ -123,47 +111,6 @@ struct lldesc {
  * is 2304 bytes, but there pretty much isn't enough space for
  * that in this setup.
  */
-
-struct pbuf;
-struct target_rc;
-struct esf_tx_desc;
-struct esf_rx_desc;
-
-struct esf_buf {
-	struct pbuf *pbuf;
-	struct lldesc *ds_head;
-	struct lldesc *ds_tail;
-	uint16_t ds_len;
-	uint8_t * buf_begin;
-	uint16_t hdr_len;
-	uint16_t data_len;
-	int16_t chl_freq_offset;
-	struct target_rc *trc;
-	struct esf_buf *stqe_next;
-	union {
-		struct esf_tx_desc *tx_desc;
-		struct esf_rx_desc *rx_desc;
-	};
-};
-
-struct pbuf {
-	/** next pbuf in singly linked pbuf chain */
-	struct pbuf *next;
-	/** pointer to the actual data in the buffer */
-	void *payload;
-	/** total length of this buffer and all next buffers in chain */
-	uint16_t tot_len;
-	/** length of this buffer */
-	uint16_t len;
-	/** pbuf_type as u8_t instead of enum to save space */
-	uint8_t /*pbuf_type*/ type;
-	/** misc flags */
-	uint8_t flags;
-	/** the reference count */
-	uint16_t ref;
-	/* add a pointer for esf_buf */
-	struct esf_buf *eb;
-};
 
 typedef enum {
   PBUF_TRANSPORT,
