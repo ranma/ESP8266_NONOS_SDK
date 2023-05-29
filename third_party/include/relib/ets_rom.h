@@ -4,6 +4,43 @@
 #include "c_types.h"
 #include "spi_flash.h"
 
+typedef enum {
+	/* From lowest (0) to highest (32) */
+	PRIO_USER0,
+	PRIO_USER1,
+	PRIO_USER2,
+	PRIO_3,
+	PRIO_4,
+	PRIO_5,
+	PRIO_6,
+	PRIO_7,
+	PRIO_8,
+	PRIO_9,
+	PRIO_10,
+	PRIO_11,
+	PRIO_12,
+	PRIO_13,
+	PRIO_14,
+	PRIO_15,
+	PRIO_16,
+	PRIO_17,
+	PRIO_18,
+	PRIO_19,
+	PRIO_PM=20,          /* pmTask in pm.o */
+	PRIO_EVENT=21,       /* Event_task in user_interface.o */
+	PRIO_22,
+	PRIO_23,
+	PRIO_24,
+	PRIO_LWIP_THREAD=25, /* espconn_mbedtls.c */
+	PRIO_ESPCONN=26,     /* espconn_tcp.c */
+	PRIO_27,
+	PRIO_IF0_STA=28,     /* lwip_if0_task in eagle_lwip_if.o */
+	PRIO_IF1_AP=29,      /* lwip_if1_task in eagle_lwip_if.o */
+	PRIO_30,
+	PRIO_RTC_TIMER=31,   /* ets_rtc_timer_task in ets_timer.o */
+	PRIO_PP=32,          /* ppTask in pp.o (probably "Packet Processing") */
+} ETSPriority;
+
 /*
   This structure is used in the argument list of "C" callable exception handlers.
   See `_xtos_set_exception_handler` details below.
@@ -60,5 +97,8 @@ uint32_t Wait_SPI_Idle(SpiFlashChip *chip);
 SpiFlashOpResult SPIRead(uint32_t faddr, void *dst, size_t size);
 
 c_exception_handler_t _xtos_set_exception_handler(int cause, c_exception_handler_t fn);
+/* 0 on success, 1 on error (queue full) */
+int ets_post(ETSPriority prio, ETSSignal sig, ETSParam par);
+void ets_task(ETSTask task, ETSPriority prio, ETSEvent *queue, uint8_t qlen);
 
 #endif /* ETS_ROM_H */

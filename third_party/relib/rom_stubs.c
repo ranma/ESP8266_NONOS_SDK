@@ -4,6 +4,7 @@
  */
 
 #include <stdint.h>
+#include "ets_sys.h"
 
 #include "relib/ets_rom.h"
 
@@ -11,11 +12,13 @@ typedef uint32_t (*fn0)(void);
 typedef uint32_t (*fn1)(uint32_t);
 typedef uint32_t (*fn2)(uint32_t, uint32_t);
 typedef uint32_t (*fn3)(uint32_t, uint32_t, uint32_t);
+typedef uint32_t (*fn4)(uint32_t, uint32_t, uint32_t, uint32_t);
 
-#define CALL0(addr)             ((fn0)(addr))()
-#define CALL1(addr, a2)         ((fn1)(addr))((uint32_t)a2)
-#define CALL2(addr, a2, a3)     ((fn2)(addr))((uint32_t)a2, (uint32_t)a3)
-#define CALL3(addr, a2, a3, a4) ((fn3)(addr))((uint32_t)a2, (uint32_t)a3, (uint32_t)a4)
+#define CALL0(addr)                 ((fn0)(addr))()
+#define CALL1(addr, a2)             ((fn1)(addr))((uint32_t)a2)
+#define CALL2(addr, a2, a3)         ((fn2)(addr))((uint32_t)a2, (uint32_t)a3)
+#define CALL3(addr, a2, a3, a4)     ((fn3)(addr))((uint32_t)a2, (uint32_t)a3, (uint32_t)a4)
+#define CALL4(addr, a2, a3, a4, a5) ((fn4)(addr))((uint32_t)a2, (uint32_t)a3, (uint32_t)a4, (uint32_t)a5)
 
 int
 memcmp(const void *s1, const void *s2, size_t n)
@@ -50,6 +53,18 @@ void
 ets_delay_us(uint32_t us)
 {
 	CALL1(0x40002ecc, us);
+}
+
+int
+ets_post(ETSPriority prio, ETSSignal sig, ETSParam par)
+{
+	return CALL3(0x40000e24, prio, sig, par);
+}
+
+void
+ets_task(ETSTask task, ETSPriority prio, ETSEvent *queue, uint8_t qlen)
+{
+	CALL4(0x40000dd0, task, prio, queue, qlen);
 }
 
 
