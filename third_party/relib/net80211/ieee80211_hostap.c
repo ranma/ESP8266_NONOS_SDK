@@ -11,12 +11,6 @@
 #include "relib/s/lldesc.h"
 #include "relib/s/esf_buf.h"
 
-void
-jmp_hostap_deliver_data(void *unused_param1, esf_buf_st *eb)
-{
-	hostap_deliver_data(unused_param1, eb);
-}
-
 void ICACHE_FLASH_ATTR
 hostap_deliver_data(void *unused_param1, esf_buf_st *eb)
 {
@@ -30,6 +24,12 @@ hostap_deliver_data(void *unused_param1, esf_buf_st *eb)
 	p->eb = eb;
 	ets_post(PRIO_IF1_AP,0,(ETSParam)p);
 	ets_printf("hostap_deliver_data!\n");
+}
+
+void
+jmp_hostap_deliver_data(void *unused_param1, esf_buf_st *eb)
+{
+	hostap_deliver_data(unused_param1, eb);
 }
 
 /*

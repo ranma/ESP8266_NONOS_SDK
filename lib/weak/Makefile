@@ -64,10 +64,12 @@ EMPTY :=
 SPACE := $(EMPTY) $(EMPTY)
 KEEP_LOCAL_RE = $(subst $(SPACE),|,$(KEEP_LOCAL))
 REDEFINE_SYMS_F = $(shell for s in $(REDEFINE_ETS_SYMS); do echo "--redefine-sym ets_$$s=$$s"; done) \
-	--redefine-sym=hostap_deliver_data=ets_hostap_deliver_data
+	--redefine-sym=hostap_deliver_data=ets_hostap_deliver_data \
+	--redefine-sym=ieee80211_deliver_data=ets_ieee80211_deliver_data
 
 RENAME_SECTIONS = \
-	--rename-section=.text.hostap_deliver_data=.stub
+	--rename-section=.text.hostap_deliver_data=.stub \
+	--rename-section=.text.ieee80211_deliver_data=.stub
 
 
 # Globalize and weaken the symbols

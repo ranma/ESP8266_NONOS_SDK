@@ -164,7 +164,7 @@ pbuf_alloc(pbuf_layer l, uint16_t length, pbuf_type type)
 	return p;
 }
 
-int system_pp_recycle_rx_pkt(void *eb);
+int system_pp_recycle_rx_pkt(void *eb); /* trampoline/alias which calls ppRecycleRxPkt */
 
 uint8_t ICACHE_FLASH_ATTR
 pbuf_free(struct pbuf *p)

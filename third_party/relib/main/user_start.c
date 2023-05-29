@@ -13,6 +13,7 @@
 #include "relib/ets_rom.h"
 #include "relib/relib.h"
 #include "relib/efuse_register.h"
+#include "relib/s/ieee80211_conn.h"
 
 #define BOOT_CLK_FREQ   52000000
 #define NORMAL_CLK_FREQ 80000000
@@ -93,17 +94,6 @@ typedef struct __attribute__((packed)) {
 static_assert(sizeof(wl_profile_st) == 0x4a4, "wl_profile size mismatch");
 static_assert(OFFSET_OF(wl_profile_st, opmode) == 8, "opmode offset mismatch");
 static_assert(OFFSET_OF(wl_profile_st, mac_bakup) == 1170, "mac_bakup offset mismatch");
-
-struct netif;
-
-typedef struct __attribute__((packed)) {
-	/* shallow struct def to avoid pulling in all the other struct members */
-	union {
-		uint8_t pad[672];
-		struct netif *ni_ifp;
-	};
-} ieee80211_conn_st;
-static_assert(sizeof(ieee80211_conn_st) == 672, "ieee80211_conn size mismatch");
 
 typedef struct __attribute__((packed)) {
 	/* shallow struct def to avoid pulling in all the other struct members */
@@ -264,6 +254,8 @@ extern init_done_cb_t done_cb; /* user_interface.o */
 
 extern void jmp_hostap_deliver_data;
 extern void ets_hostap_deliver_data;
+extern void jmp_ieee80211_deliver_data;
+extern void ets_ieee80211_deliver_data;
 
 struct override {
 	void* old_fn;
@@ -272,6 +264,7 @@ struct override {
 
 static struct override overrides[] = {
 	{&ets_hostap_deliver_data, &jmp_hostap_deliver_data},
+	{&ets_ieee80211_deliver_data, &jmp_ieee80211_deliver_data},
 };
 
 void try_patch(uint32_t old, uint32_t new)
