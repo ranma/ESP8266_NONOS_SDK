@@ -347,6 +347,10 @@ $(OBJODIR)/%.o: %.c
 	@mkdir -p $(OBJODIR);
 	$(CC) $(if $(findstring $<,$(DSRCS)),$(DFLAGS),$(CFLAGS)) $(COPTS_$(*F)) -o $@ -c $<
 
+%.s: %.c
+	@mkdir -p $(OBJODIR);
+	$(CC) $(if $(findstring $<,$(DSRCS)),$(DFLAGS),$(CFLAGS)) $(COPTS_$(*F)) -g -fverbose-asm -S -o $@ -c $<
+
 $(OBJODIR)/%.d: %.c
 	@mkdir -p $(OBJODIR);
 	@echo DEPEND: $(CC) -M $(CFLAGS) $<
