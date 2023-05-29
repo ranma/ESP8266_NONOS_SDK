@@ -58,7 +58,7 @@ REDEFINE_ETS_SYMS = \
 	strncpy \
 	strstr \
 
-OBJ_REMOVE_libmain.a = mem_manager.o
+OBJ_REMOVE_libmain.a = mem_manager.o eagle_lwip_if.o
 
 EMPTY :=
 SPACE := $(EMPTY) $(EMPTY)
