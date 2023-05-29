@@ -28,6 +28,7 @@
 #endif
 
 #define OFFSET_OF(s, f) __builtin_offsetof(s, f)
+#define ARRAY_SIZE(a) (sizeof((a)) / sizeof(*(a)))
 
 typedef struct __attribute__((packed)) {
 	uint8_t id;               // = 0xE9
@@ -260,6 +261,61 @@ extern uint16_t TestStaFreqCalValInput; /* ieee80211_scan.o */
 extern uint16_t TestStaFreqCalValDev; /* ieee80211_scan.o */
 extern uint8_t user_init_flag; /* app_main.o */
 extern init_done_cb_t done_cb; /* user_interface.o */
+
+extern void jmp_hostap_deliver_data;
+extern void ets_hostap_deliver_data;
+
+struct override {
+	void* old_fn;
+	void* new_fn;
+};
+
+static struct override overrides[] = {
+	{&ets_hostap_deliver_data, &jmp_hostap_deliver_data},
+};
+
+void try_patch(uint32_t old, uint32_t new)
+{
+	uint32_t *data = (void*)old;
+	int32_t delta = new-old;
+	int32_t abs = delta ? delta : -delta;
+	uint32_t op = ((delta - 4) << 6) | 0x6;
+	uint32_t old_op;
+	if ((old & 3) != 0) {
+		ets_printf("not aligned\n");
+		return;
+	}
+	old_op = *data;
+	/* check for "addi a1, a1" */
+	if ((old_op & 0xffff) != 0xc112) {
+		ets_printf("unexpected function prologue %08x, skipped!\n", old_op);
+		return;
+	}
+	if (old >= 0x40200000 || old < 0x40100000) {
+		ets_printf("not in IRAM\n");
+		return;
+	}
+	if (abs >= 131000) {
+		ets_printf("%d out of jump range\n", delta);
+		return;
+	}
+	/* It's a reasonably safe assumption that there'll be space in
+	 * front for a literal, unless it is a very trivial function */
+	*(data-1) = new;
+	old_op = *data;
+	*data = op;
+	ets_printf("patched code %08x -> %08x\n", old_op, op);
+}
+
+void install_overrides(void)
+{
+	for (int i = 0; i < ARRAY_SIZE(overrides); i++) {
+		ets_printf("Patching function %p -> %p\n",
+			overrides[i].old_fn,
+			overrides[i].new_fn);
+		try_patch((uint32_t)overrides[i].old_fn, (uint32_t)overrides[i].new_fn);
+	}
+}
 
 #if 1
 /* Test: These support functions for ISSI and GD25Q32C are not small.
@@ -884,6 +940,7 @@ relib_user_start(void)
 	}
 
 #if 1
+	install_overrides();
 	relib_user_local_init();
 #else
 	user_local_init();

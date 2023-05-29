@@ -63,7 +63,11 @@ OBJ_REMOVE_libmain.a = mem_manager.o eagle_lwip_if.o
 EMPTY :=
 SPACE := $(EMPTY) $(EMPTY)
 KEEP_LOCAL_RE = $(subst $(SPACE),|,$(KEEP_LOCAL))
-REDEFINE_SYMS_F = $(shell for s in $(REDEFINE_ETS_SYMS); do echo "--redefine-sym ets_$$s=$$s"; done)
+REDEFINE_SYMS_F = $(shell for s in $(REDEFINE_ETS_SYMS); do echo "--redefine-sym ets_$$s=$$s"; done) \
+	--redefine-sym=hostap_deliver_data=ets_hostap_deliver_data
+
+RENAME_SECTIONS = \
+	--rename-section=.text.hostap_deliver_data=.stub
 
 
 # Globalize and weaken the symbols
@@ -75,5 +79,5 @@ REDEFINE_SYMS_F = $(shell for s in $(REDEFINE_ETS_SYMS); do echo "--redefine-sym
 		sort -u > $(@:.a=.sym)
 	$(OBJCOPY) --globalize-symbols $(@:.a=.sym) $< tmp1.a
 	$(OBJCOPY) --weaken tmp1.a tmp2.a
-	$(OBJCOPY) $(REDEFINE_SYMS_F) tmp2.a $@
+	$(OBJCOPY) $(REDEFINE_SYMS_F) $(RENAME_SECTIONS) tmp2.a $@
 	$(AR) dv $@ $(OBJ_REMOVE_$(@))

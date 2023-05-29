@@ -11,6 +11,12 @@
 #include "relib/s/lldesc.h"
 #include "relib/s/esf_buf.h"
 
+void
+jmp_hostap_deliver_data(void *unused_param1, esf_buf_st *eb)
+{
+	hostap_deliver_data(unused_param1, eb);
+}
+
 void ICACHE_FLASH_ATTR
 hostap_deliver_data(void *unused_param1, esf_buf_st *eb)
 {
