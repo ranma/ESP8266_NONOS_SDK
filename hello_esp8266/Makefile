@@ -37,7 +37,7 @@ endif # } PDIR
 APPDIR = .
 LDDIR = ../ld
 
-CCFLAGS += -Os -Werror
+CCFLAGS += -Os -Werror -std=gnu11
 
 TARGET_LDFLAGS = \
     -nostdlib \
