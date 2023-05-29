@@ -11,6 +11,9 @@
 #include "os_type.h"
 #include "user_config.h"
 
+
+static const char mem_debug_file[] ICACHE_RODATA_ATTR = __FILE__;
+
 static FLASH_STR char http400_BadRequest[] =
     "HTTP/1.1 400 Bad Request\r\n"
     "Content-Type: text/html\r\n"

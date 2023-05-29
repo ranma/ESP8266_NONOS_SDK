@@ -20,6 +20,8 @@
 #define SOFTAP_IF 0x01
 bool wifi_get_ip_info(uint8_t if_index, ip_addr_t *info);
 
+static const char mem_debug_file[] ICACHE_RODATA_ATTR = __FILE__;
+
 typedef struct __attribute__((packed)) {
 	uint16_t id;
 	union {
