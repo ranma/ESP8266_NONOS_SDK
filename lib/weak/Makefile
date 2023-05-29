@@ -73,8 +73,7 @@ REDEFINE_SYMS_F = $(shell for s in $(REDEFINE_ETS_SYMS); do echo "--redefine-sym
 		cut -d" " -f1 | \
 		grep -E -v "^($(KEEP_LOCAL_RE))$$" | \
 		sort -u > $(@:.a=.sym)
-	$(OBJCOPY) \
-		$(REDEFINE_SYMS_F) \
-		--globalize-symbols $(@:.a=.sym) \
-		--weaken $< $@
+	$(OBJCOPY) --globalize-symbols $(@:.a=.sym) $< tmp1.a
+	$(OBJCOPY) --weaken tmp1.a tmp2.a
+	$(OBJCOPY) $(REDEFINE_SYMS_F) tmp2.a $@
 	$(AR) dv $@ $(OBJ_REMOVE_$(@))
