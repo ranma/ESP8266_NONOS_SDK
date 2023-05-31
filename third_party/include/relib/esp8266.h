@@ -7,6 +7,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#define OFFSET_OF(s, f) __builtin_offsetof(s, f)
+
 #define REG32(x) volatile uint32_t x
 
 #if !defined(BIT)
@@ -111,7 +113,7 @@ struct rtc_regs {
 	REG32(SW_RESET);  // 0x000    Set bit31 to reset CPU
 	REG32(SLP_VAL);   // 0x004    the target value of RTC_COUNTER for wakeup from light-sleep/deep-sleep
 	REG32(SLP_CTL);   // 0x008    bit20/bit21 fiddled in rtc_enter_sleep/rtc_get_reset_reason
-	uint32_t res1;
+	REG32(XTAL_WAIT_TIME); // 0x00c   See pm_set_pll_xtal_wait_time
 	REG32(RESET_CTL); // 0x010    used by rom_phy_reset_req
 	union {           // 0x014
 		REG32(STATE1);
@@ -120,23 +122,47 @@ struct rtc_regs {
 	union {           // 0x018
 		REG32(STATE2);
 		REG32(WAKEUP_HW_CAUSE_REG);  // bits 8-13
+		// See pm_wakeup_opt
 	};
 	REG32(SLP_CNT_VAL); // 0x01c
 	REG32(INT_ENA);   // 0x020
 	REG32(INT_CLR);   // 0x024
-	uint32_t res2[(0x30-0x28)/4];
+	REG32(SLP_STATE);   // 0x028   used by pm_wait4wakeup
+	uint32_t res2[(0x30-0x2c)/4];
 	REG32(STORE[4]);      // 0x030
-	uint32_t res3[(0x68-0x40)/4];
+	REG32(R40);           // 0x040
+	REG32(R44);           // 0x044
+	REG32(R48);           // 0x048
+	REG32(R4C);           // 0x04c
+	REG32(R50);
+	REG32(R54);
+	REG32(R58);
+	REG32(R5C);
+	REG32(R60);
+	REG32(R64);
 	REG32(GPIO_OUT);      // 0x068
 	uint32_t res4[(0x74-0x6c)/4];
 	REG32(GPIO_ENABLE);   // 0x074
-	uint32_t res5[(0x8c-0x78)/4];
+	REG32(R78);
+	REG32(R7C);
+	REG32(R80);
+	REG32(R84);
+	REG32(R88);
 	REG32(GPIO_IN_DATA);  // 0x08c
 	REG32(GPIO_CONF);     // 0x090
-	uint32_t res6[(0xa0-0x94)/4];
+	REG32(R94);
+	REG32(R98);
+	REG32(R9C);
 	REG32(XPD_DCDC_CONF); // 0x0a0
+	REG32(RA4);
+	// See pm_wakeup_opt
+	REG32(RA8);
+	REG32(RAC);
+	REG32(RB0);
+	REG32(RB4);
 };
 #define RTC ((struct rtc_regs *) 0x60000700)
+static_assert(OFFSET_OF(struct rtc_regs, XPD_DCDC_CONF) == 0xa0, "reg_rtc offset mismatch");
 
 struct wdt_regs {
 	REG32(CTL);    // 0x000

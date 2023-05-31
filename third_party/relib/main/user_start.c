@@ -252,10 +252,10 @@ extern uint16_t TestStaFreqCalValDev; /* ieee80211_scan.o */
 extern uint8_t user_init_flag; /* app_main.o */
 extern init_done_cb_t done_cb; /* user_interface.o */
 
-extern void jmp_hostap_deliver_data;
-extern void ets_hostap_deliver_data;
-extern void jmp_ieee80211_deliver_data;
-extern void ets_ieee80211_deliver_data;
+extern char jmp_hostap_deliver_data;
+extern char ets_hostap_deliver_data;
+extern char jmp_ieee80211_deliver_data;
+extern char ets_ieee80211_deliver_data;
 
 struct override {
 	void* old_fn;
@@ -350,6 +350,130 @@ relib_reset_uart_baud(int clk)
 	UART0->CLKDIV = clk / UART_BAUDRATE;
 #endif
 }
+
+extern int chip_version;
+
+int ICACHE_FLASH_ATTR
+get_chip_version(void)
+{
+	if (chip_version == -1) {
+		uint32_t x;
+		if (EFUSE->DATA[2] & 0x8000) {
+			x = EFUSE->DATA[1];
+		} else {
+			x = EFUSE->DATA[3];
+		}
+		chip_version = (x >> 24) & 0xf;
+	}
+
+	return chip_version;
+}
+
+void ICACHE_FLASH_ATTR
+sleep_opt_8266(uint32_t r1, uint32_t sw_reset, uint32_t reset_ctl)
+{
+	RTC->R40 = 0;
+	RTC->R44 = r1;
+	RTC->SW_RESET = sw_reset;
+	RTC->RESET_CTL = reset_ctl;
+}
+
+void ICACHE_FLASH_ATTR
+sleep_opt_bb_on_8266(void)
+{
+	if (get_chip_version() == 2) {
+		sleep_opt_8266(0, 0, 0x00800000);
+	} else {
+		sleep_opt_8266(0, 0, 0x00800050);
+	}
+}
+
+void ICACHE_FLASH_ATTR
+pm_wakeup_opt(uint32_t reg18, uint32_t rega8)
+{
+	RTC->WAKEUP_HW_CAUSE_REG = (RTC->WAKEUP_HW_CAUSE_REG & ~0x3f) | reg18;
+	RTC->RA8 = (RTC->RA8 & ~1) | rega8;
+}
+
+void ICACHE_FLASH_ATTR
+pm_set_pll_xtal_wait_time(void)
+{
+	if (get_chip_version() < 2) {
+		RTC->XTAL_WAIT_TIME = 0xc8064;
+	} else {
+		RTC->XTAL_WAIT_TIME = 0x3203c;
+	}
+}
+
+extern uint8_t periodic_cal_sat;
+
+void ICACHE_FLASH_ATTR
+pm_set_sleep_cycles(int rtc_cycles)
+{
+	/* Set the target value of RTC_COUNTER for wakeup from light-sleep/deep-sleep */
+	RTC->SLP_VAL /* target */ = rtc_cycles + RTC->SLP_CNT_VAL /* current count */;
+	periodic_cal_sat = 5000 < rtc_cycles;
+}
+
+extern uint8_t software_slp_reject;;
+extern uint8_t hardware_reject;
+
+void ICACHE_FLASH_ATTR
+pm_wait4wakeup(int param)
+{
+	if (!(((param == 1) || (param == 2)) && (software_slp_reject == 0))) {
+		return;
+	}
+	while ((RTC->SLP_STATE & 3) == 0);
+	hardware_reject = RTC->SLP_STATE & 2;
+}
+
+void ICACHE_FLASH_ATTR
+sleep_reset_analog_rtcreg_8266(void)
+{
+	RTC->INT_CLR = 0xffffffff;
+	sleep_opt_bb_on_8266();
+	pm_wakeup_opt(8,0);
+	pm_set_pll_xtal_wait_time();
+	pm_set_sleep_cycles(1000);
+
+	RTC->SLP_CTL |= 0x100000; /* trigger wakeup? */
+	pm_wait4wakeup(2);
+
+	RTC->SW_RESET = 0x0019c06a;
+
+	/* Note: This overrides the value set by pm_set_sleep_cycles() above */
+	RTC->SLP_VAL = 0xfff;
+	RTC->SLP_CTL = 0;
+
+	/* Note: This overrides the value set by pm_set_pll_xtal_wait_time() above */
+	RTC->XTAL_WAIT_TIME = 0x640c8;
+
+	RTC->RESET_CTL = 0xf0000000;
+	RTC->WAKEUP_HW_CAUSE_REG = 4;
+	RTC->INT_ENA = 0;
+	RTC->R40 = 0;
+	RTC->R44 = 0;
+	RTC->R48 = 0x20302020;
+	RTC->R4C = 0x20500000;
+	RTC->R58 = 0;
+	RTC->R5C = 7;
+	RTC->R60 = 7;
+	RTC->R64 = 0;
+	RTC->GPIO_OUT = 0;
+	RTC->GPIO_ENABLE = 0;
+	RTC->R80 = 0;
+	RTC->GPIO_CONF = 0;
+	RTC->R94 = 0;
+	RTC->R98 = 0;
+	RTC->R9C = 0;
+	RTC->XPD_DCDC_CONF = 0;
+	RTC->RA8 = 0;
+	RTC->RAC = 0;
+	RTC->RB0 = 0;
+	RTC->RB4 = 0;
+}
+
 
 static bool
 userbin_check(struct boot_hdr *bhdr)
