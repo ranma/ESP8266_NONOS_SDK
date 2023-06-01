@@ -474,6 +474,90 @@ sleep_reset_analog_rtcreg_8266(void)
 	RTC->RB4 = 0;
 }
 
+extern ETSTimer* timer_list;
+extern ETSTimer* debug_timer;
+static ETSEvent rtcTimerEvtQ[4];
+typedef void ETSTimerFunc(void* timer_arg);
+void ets_timer_intr_set(int expire);
+void ets_timer_handler_isr(void);
+
+#if 0
+void ICACHE_FLASH_ATTR
+ets_timer_handler_isr(void)
+{
+	int now;
+	ETSTimer *t;
+	uint32_t t_count;
+	ETSTimerFunc **t_fn;
+	ETSTimer **t_next;
+	uint32_t *t_period;
+
+	ets_intr_lock();
+	now = WDEV_TIMER->COUNT;
+	do {
+		t_count = FRC2->COUNT;
+		t = timer_list;
+		if (timer_list == NULL) {
+LAB_40230a24:
+			ets_intr_unlock();
+			return;
+		}
+		if (0 < (int)(timer_list->timer_expire - t_count)) {
+			ets_timer_intr_set(timer_list->timer_expire);
+			goto LAB_40230a24;
+		}
+		t_fn = &timer_list->timer_func;
+		t_period = &timer_list->timer_period;
+		debug_timer = timer_list;
+		t_next = &timer_list->timer_next;
+		timer_list = timer_list->timer_next;
+		debug_timerfn = *t_fn;
+		*t_next = (ETSTimer *)-1;
+		if (*t_period != 0) {
+			if ((uint)(_DAT_3ff20c00 - iVar1) < 0x3a99) {
+				t_count = t->timer_expire;
+			}
+			t_count = *t_period + t_count;
+			t->timer_expire = t_count;
+			timer_insert(t_count,t);
+		}
+		ets_intr_unlock();
+		t->timer_func(t->timer_arg);
+		ets_intr_lock();
+	} while( true );
+}
+#endif
+
+void ICACHE_FLASH_ATTR
+ets_rtc_timer_task(ETSEvent *e)
+{
+	if (e->sig != 0) {
+		return;
+	}
+	ets_timer_handler_isr();
+}
+
+void ets_timer_handler_dsr(void *unused_arg)
+{
+	ets_post(PRIO_RTC_TIMER, 0, 0);
+}
+
+void ICACHE_FLASH_ATTR
+ets_timer_init(void)
+{
+	timer_list = NULL;
+	/* ets_isr_attach is just a no-op wrapper for * _xtos_set_interrupt_handler_arg */
+	_xtos_set_interrupt_handler_arg(10, ets_timer_handler_dsr, NULL);
+
+	DPORT->EDGE_INT_ENABLE |= 4;
+	_xtos_ints_on(0x400);
+
+	ets_task(ets_rtc_timer_task, PRIO_RTC_TIMER, rtcTimerEvtQ, ARRAY_SIZE(rtcTimerEvtQ));
+	FRC2->ALARM = 0;
+	FRC2->CTRL = 0x88;
+	FRC2->LOAD = 0;
+}
+
 
 static bool
 userbin_check(struct boot_hdr *bhdr)

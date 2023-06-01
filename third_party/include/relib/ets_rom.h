@@ -101,4 +101,8 @@ c_exception_handler_t _xtos_set_exception_handler(int cause, c_exception_handler
 int ets_post(ETSPriority prio, ETSSignal sig, ETSParam par);
 void ets_task(ETSTask task, ETSPriority prio, ETSEvent *queue, uint8_t qlen);
 
+typedef void (*_xtos_handler_fn)(void *arg);
+void _xtos_set_interrupt_handler_arg(int i, _xtos_handler_fn f, void *arg);
+uint32_t _xtos_ints_on(uint32_t mask);
+
 #endif /* ETS_ROM_H */

@@ -109,6 +109,17 @@ struct gpio_regs {
 
 #define GPIO ((struct gpio_regs *) 0x60000300)
 
+struct frc_regs {
+	REG32(LOAD);  // 0x00
+	REG32(COUNT); // 0x04
+	REG32(CTRL);  // 0x08
+	REG32(INT);   // 0x0c   /* write to clear */
+	REG32(ALARM); // 0x10
+};
+
+#define FRC1 ((struct frc_regs *) 0x60000600)
+#define FRC2 ((struct frc_regs *) 0x60000620)
+
 struct rtc_regs {
 	REG32(SW_RESET);  // 0x000    Set bit31 to reset CPU
 	REG32(SLP_VAL);   // 0x004    the target value of RTC_COUNTER for wakeup from light-sleep/deep-sleep
@@ -237,6 +248,12 @@ struct dport_regs {
 };
 
 #define DPORT ((struct dport_regs *) 0x3ff00000)
+
+struct wdev_timer_regs {
+	REG32(COUNT);  /* microseconds, counting up */
+};
+
+#define WDEV_TIMER ((struct wdev_timer_regs *) 0x3ff20c00)
 
 struct efuse_regs {
 	REG32(DATA[4]);
