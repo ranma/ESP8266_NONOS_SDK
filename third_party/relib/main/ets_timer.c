@@ -24,23 +24,13 @@ static ETSEvent rtcTimerEvtQ[4];
 ETSTimer* timer_list;  /* fpm_onEtsIdle and pm_onEtsIdle reference this directly! */
 uint8_t timer2_ms_flag;
 
-ETSTimer* debug_timer;
-ETSTimerFunc *debug_timerfn;
-uint8_t dbg_timer_flag;
-
 void
 ets_rtc_timer_arm(uint32_t timer_expire)
 {
-	if (dbg_timer_flag != '\0') {
-		os_printf_plus("time8:%08X\n",timer_expire);
-	}
 	int t_now = FRC2->COUNT;
 	if ((int)(timer_expire - t_now) < 1) {
 		/* already expired, schedule it shortly into the future */
 		timer_expire = t_now + 0x50;
-		if (dbg_timer_flag != '\0') {
-			os_printf_plus("time9:%08X\n",timer_expire);
-		}
 	}
 	FRC2->ALARM = timer_expire;
 }
@@ -56,9 +46,6 @@ ets_timer_intr_set(uint32_t timer_expire)
 	slop = 1280;
 	if (timer2_ms_flag != '\0') {
 		slop = 80;
-	}
-	if (dbg_timer_flag != '\0') {
-		os_printf_plus("time7:%08X\n",timer_expire);
 	}
 	t_now_with_slop = t_now + slop;
 	if ((int)(timer_expire - t_now_with_slop) < 1) {
@@ -93,24 +80,14 @@ timer_insert(uint32_t timer_expire, ETSTimer *ptimer)
 		ETSTimer *t_tmp;
 		do {
 			t_tmp = t_after;
-			if (dbg_timer_flag != '\0') {
-				os_printf_plus("time5x:%08X,%08X\n",timer_expire,t_tmp->timer_expire);
-			}
 			t_after = t_tmp;
 		} while ((0 < (int)(timer_expire - t_tmp->timer_expire)) &&
 						(t_after = t_tmp->timer_next, t_before = t_tmp, t_after != NULL));
-	}
-	if ((dbg_timer_flag != '\0') &&
-		 (os_printf_plus("time5y:%p,%p\n",t_before,t_after), dbg_timer_flag != '\0')) {
-		os_printf_plus("time5:%08X\n",timer_expire);
 	}
 	ptimer->timer_next = t_after;
 	ptimer->timer_expire = timer_expire;
 	if (t_before == (ETSTimer *)0x0) {
 		timer_list = ptimer;
-		if (dbg_timer_flag != '\0') {
-			os_printf_plus("time6:%08X\n",timer_expire);
-		}
 		ets_timer_intr_set(timer_expire);
 	}
 	else {
@@ -149,10 +126,6 @@ LAB_40230a24:
 			goto LAB_40230a24;
 		}
 		/* Timer is expired */
-
-		/* Save some values for debugging */
-		debug_timer = t;
-		debug_timerfn = t->timer_func;
 
 		/* Remove from timer_list */
 		timer_list = t->timer_next;
@@ -239,7 +212,6 @@ void
 ets_timer_arm_new(ETSTimer *ptimer, uint32_t time, bool repeat_flag, bool ms_flag)
 {
 	uint32_t period;
-	char dbg_flag;
 	int t_now;
 	
 	if (ptimer->timer_next != (ETSTimer *)-1) {
@@ -261,9 +233,6 @@ ets_timer_arm_new(ETSTimer *ptimer, uint32_t time, bool repeat_flag, bool ms_fla
 			os_printf_plus("err2,exceed max time value\n");
 			return;
 		}
-		if (dbg_timer_flag != '\0') {
-			os_printf_plus("time0:%08X\n",time);
-		}
 		if (time == 0) {
 			period = 0;
 		}
@@ -279,10 +248,6 @@ ets_timer_arm_new(ETSTimer *ptimer, uint32_t time, bool repeat_flag, bool ms_fla
 			os_printf_plus("err3,exceed max time value\n");
 			return;
 		}
-		if (dbg_timer_flag != '\0') {
-			os_printf_plus("time1:%08X\n",time);
-		}
-		dbg_flag = dbg_timer_flag;
 		if (time == 0) {
 			period = 0;
 		}
@@ -292,9 +257,6 @@ ets_timer_arm_new(ETSTimer *ptimer, uint32_t time, bool repeat_flag, bool ms_fla
 		else {
 			period = (time & 3) * 312 + (time >> 2) * 1250;
 		}
-		if (dbg_flag != '\0') {
-			os_printf_plus("time2:%08X\n",period);
-		}
 	}
 	if (repeat_flag) {
 		ptimer->timer_period = period;
@@ -302,12 +264,6 @@ ets_timer_arm_new(ETSTimer *ptimer, uint32_t time, bool repeat_flag, bool ms_fla
 
 	uint32_t saved = LOCK_IRQ_SAVE();
 	t_now = FRC2->COUNT;
-	if (dbg_timer_flag != '\0') {
-		os_printf_plus("time3:%08X\n",t_now);
-	}
-	if (dbg_timer_flag != '\0') {
-		os_printf_plus("time4:%08X\n",period + t_now);
-	}
 	timer_insert(period + t_now, ptimer);
 	LOCK_IRQ_RESTORE(saved);
 }
