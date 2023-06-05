@@ -19,6 +19,9 @@
 	__asm__ __volatile__("wsr %0, PS\n" :: "a"(c) :); \
 } while (0)
 
+/* Check if t1 is after t2 */
+#define TIME_AFTER(t1, t2) ((int)(t1 - t2) > 0)
+
 static ETSEvent rtcTimerEvtQ[4];
 
 ETSTimer* timer_list;  /* fpm_onEtsIdle and pm_onEtsIdle reference this directly! */
@@ -39,46 +42,85 @@ ets_timer_setfn(ETSTimer *t, ETSTimerFunc *fn, void *parg)
 void
 ets_rtc_timer_arm(uint32_t timer_expire)
 {
-	int t_now = FRC2->COUNT;
-	if ((int)(timer_expire - t_now) < 1) {
-		/* already expired, schedule it shortly into the future */
-		timer_expire = t_now + 0x50;
+#if 0
+	uint32_t cc1, cc2, base, ps, future, diff;
+	/* Critical section is measured to take 19 cycles (including CCOUNT reads)
+	 * in the fast case (jump not taken).
+	 * Out of these, 5 cycles are for instructions that should take
+	 * 1 cycle each, leaving 14 cycles for the peripheral
+	 * load+store (presumably 7 cycles each).
+	 */
+	__asm__ __volatile__(
+		/* Load FRC2 base without using L32R */
+		"movi.n  %[base], 6\n"
+		"slli    %[base], %[base], 28\n"
+		"addmi   %[base], %[base], 0x620\n"
+		/* Start of critical section */
+		"rsil    %[ps], 3\n"
+		"rsr     %[cc1], CCOUNT\n"
+		/* Load FRC2->COUNT */
+		"l32i.n  %[tf], %[base], 0x04\n"
+		/* Add safety margin */
+		"addi    %[tf], %[tf], 20\n"
+		/* Check if expiry is soon or already past */
+		"sub     %[d], %[te], %[tf]\n"
+		/* Jump if expiry is too close or already past */
+		"bgei    %[d], 1, .erta_skip\n"
+		/* Expiry far enough into the future, use original value */
+		"mov.n   %[tf], %[te]\n"
+		".erta_skip:\n"
+		/* Write new target time to FRC2->ALARM */
+		"s32i.n  %[tf], %[base], 0x10\n"
+		/* Leave critical section */
+		"rsr     %[cc2], CCOUNT\n"
+		"wsr     %[ps], PS\n"
+		: [cc1]"=a"(cc1),
+		  [cc2]"=a"(cc2),
+		  [ps]"=a"(ps),
+		  [tf]"=a"(future),
+		  [d]"=a"(diff),
+		  [base]"=&a"(base)
+		: [te]"a"(timer_expire)
+		:
+	);
+
+/*
+	static int arm_cycles = 0;
+	int cc_diff = cc2 - cc1;
+	if (cc_diff != arm_cycles) {
+		ets_printf("ets_rtc_timer_arm: %d critical cycles\n", cc_diff);
+		ets_printf("base=%08x ps=%08x tf=%08x te=%08x d=%d\n",
+			base, ps, future, timer_expire, diff);
+		arm_cycles = cc_diff;
 	}
+*/
+
+#else
+	/* Margin for reg read, TIME_AFTER, adjustment and reg write */
+	const int safety_margin = 20;
+	uint32_t saved = LOCK_IRQ_SAVE(); /* critical section, so disable irqs */
+	/* Write target value _first_ */
 	FRC2->ALARM = timer_expire;
+	/* Then get current count to check if it already expired */
+	int t_now = FRC2->COUNT;
+	if (TIME_AFTER(t_now, timer_expire)) {
+		/* timer already expired, reschedule to near future to
+		 * make sure the interrupt is fired */
+		FRC2->ALARM = t_now + safety_margin;
+		/* TODO: If there is a way to manually set the interrupt flag,
+		 * no safety_margin would be needed here */
+	}
+	LOCK_IRQ_RESTORE(saved);
+#endif
 }
 
 void
 ets_timer_intr_set(uint32_t timer_expire)
 {
-	int slop;
-	int t_now;
-	int t_now_with_slop;
-
-	t_now = FRC2->COUNT;
-	slop = 1280;
-	if (timer2_ms_flag != '\0') {
-		slop = 80;
-	}
-	t_now_with_slop = t_now + slop;
-	if ((int)(timer_expire - t_now_with_slop) < 1) {
-		/* expiring shortly or already expired */
-		if ((int)(timer_expire - t_now) < 1) {
-			/* already expired, schedule shortly into the future */
-			ets_rtc_timer_arm(t_now_with_slop);
-		}
-		else {
-			/* expiring soon, schedule with slop and a bit extra */
-			ets_rtc_timer_arm(timer_expire + slop + 0x40);
-		}
-	}
-	else {
-		/* far enough into the future, schedule as-is */
-		ets_rtc_timer_arm(timer_expire);
-	}
+	/* ets_rtc_timer_arm already handles expiry time close to
+	 * current time, so special handling removed here */
+	ets_rtc_timer_arm(timer_expire);
 }
-
-/* Check if t1 is after t2 */
-#define TIME_AFTER(t1, t2) ((t1 - t2) > 0)
 
 /* Overrides bootrom function of the same name */
 void
@@ -100,7 +142,7 @@ timer_insert(uint32_t timer_expire, ETSTimer *ptimer)
 	ptimer->timer_expire = timer_expire;
 	if (t_before == (ETSTimer *)0x0) {
 		timer_list = ptimer;
-		ets_timer_intr_set(timer_expire);
+		ets_rtc_timer_arm(timer_expire);
 	}
 	else {
 		t_before->timer_next = ptimer;
@@ -134,7 +176,7 @@ LAB_40230a24:
 		}
 		/* If the timer at the head of the timer list is not expired yet, re-arm with the expiry time */
 		if (0 < (int)(timer_list->timer_expire - frc2_now)) {
-			ets_timer_intr_set(timer_list->timer_expire);
+			ets_rtc_timer_arm(timer_list->timer_expire);
 			goto LAB_40230a24;
 		}
 		/* Timer is expired */
@@ -201,7 +243,7 @@ ets_timer_disarm(ETSTimer *ptimer)
 	if (timer_list == ptimer) {
 		/* ptimer is the pending timer, update FRC2 alarm */
 		timer_list = ptimer->timer_next;
-		ets_timer_intr_set(timer_list->timer_expire);
+		ets_rtc_timer_arm(timer_list->timer_expire);
 	} else {
 		/* an earlier timer is still pending, just remove ptimer from the list */
 		ETSTimer **p = &timer_list;

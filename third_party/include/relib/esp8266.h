@@ -110,7 +110,7 @@ struct gpio_regs {
 
 #define GPIO ((struct gpio_regs *) 0x60000300)
 
-struct frc_regs { /* "Frame Rate Control" */
+struct frc_regs { /* "Frame Rate Control" timers */
 	REG32(LOAD);  // 0x00
 	REG32(COUNT); // 0x04
 	/* bit8: read-only interrupt status
