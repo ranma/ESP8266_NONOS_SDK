@@ -24,6 +24,18 @@ static ETSEvent rtcTimerEvtQ[4];
 ETSTimer* timer_list;  /* fpm_onEtsIdle and pm_onEtsIdle reference this directly! */
 extern uint8_t timer2_ms_flag;  /* from user_interface.o */
 
+#if 0  /* same as rom impl, no need to override */
+void
+ets_timer_setfn(ETSTimer *t, ETSTimerFunc *fn, void *parg)
+{
+	t->timer_func = fn;
+	t->timer_arg = parg;
+	t->timer_expire = 0;
+	t->timer_period = 0;
+	t->timer_next = (ETSTimer*)-1;
+}
+#endif
+
 void
 ets_rtc_timer_arm(uint32_t timer_expire)
 {
