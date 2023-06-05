@@ -22,7 +22,7 @@
 static ETSEvent rtcTimerEvtQ[4];
 
 ETSTimer* timer_list;  /* fpm_onEtsIdle and pm_onEtsIdle reference this directly! */
-uint8_t timer2_ms_flag;
+extern uint8_t timer2_ms_flag;  /* from user_interface.o */
 
 void
 ets_rtc_timer_arm(uint32_t timer_expire)
@@ -178,7 +178,7 @@ ets_timer_init(void)
 
 	ets_task(ets_rtc_timer_task, PRIO_RTC_TIMER, rtcTimerEvtQ, ARRAY_SIZE(rtcTimerEvtQ));
 	FRC2->ALARM = 0;
-	FRC2->CTRL = 0x88;
+	FRC2->CTRL = 0x88;  /* FRC2 @312.5kHz (80MHz / 256) */
 	FRC2->LOAD = 0;
 }
 
@@ -266,6 +266,14 @@ ets_timer_arm_new(ETSTimer *ptimer, uint32_t time, bool repeat_flag, bool ms_fla
 	t_now = FRC2->COUNT;
 	timer_insert(period + t_now, ptimer);
 	LOCK_IRQ_RESTORE(saved);
+}
+
+void ICACHE_FLASH_ATTR
+system_timer_reinit(void) /* Actually in user_interface.o */
+{
+	ets_printf("system_timer_reinit()\n");
+	timer2_ms_flag = 0;
+	FRC2->CTRL = 0x84; /* switch FRC2 clock from 312.5KHz (divisor 256) to 5MHz (divisor 16) */
 }
 
 /*

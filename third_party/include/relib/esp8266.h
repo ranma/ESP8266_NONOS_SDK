@@ -110,16 +110,22 @@ struct gpio_regs {
 
 #define GPIO ((struct gpio_regs *) 0x60000300)
 
-struct frc_regs {
+struct frc_regs { /* "Frame Rate Control" */
 	REG32(LOAD);  // 0x00
 	REG32(COUNT); // 0x04
+	/* bit8: read-only interrupt status
+	 * bit7: enable
+	 * bit6: auto-reload if 0
+	 * bit3+bit2: prescaler: 0: /1  1: /16  2 or 3: /256
+	 * bit0: edge irq if 0, level irq if 1
+	 */
 	REG32(CTRL);  // 0x08
 	REG32(INT);   // 0x0c   /* write to clear */
 	REG32(ALARM); // 0x10
 };
 
-#define FRC1 ((struct frc_regs *) 0x60000600)
-#define FRC2 ((struct frc_regs *) 0x60000620)
+#define FRC1 ((struct frc_regs *) 0x60000600) /* 23bit countdown timer */
+#define FRC2 ((struct frc_regs *) 0x60000620) /* 32bit countup timer */
 
 struct rtc_regs {
 	REG32(SW_RESET);  // 0x000    Set bit31 to reset CPU
