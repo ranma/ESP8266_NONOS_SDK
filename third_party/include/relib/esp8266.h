@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include <assert.h>
 #include <stdint.h>
 
 #define OFFSET_OF(s, f) __builtin_offsetof(s, f)
