@@ -96,21 +96,39 @@ ets_rtc_timer_arm(uint32_t timer_expire)
 */
 
 #else
-	/* Margin for reg read, TIME_AFTER, adjustment and reg write */
-	const int safety_margin = 20;
-	uint32_t saved = LOCK_IRQ_SAVE(); /* critical section, so disable irqs */
+	/* Margin for reg read, TIME_AFTER, adjustment and reg write
+	 * 5 * (80Mhz / 5MHz) => 80 cycles
+	 */
+	const int safety_margin = 5;
+	static int total_calls = 0;
+	static int total_adjusts = 0;
+	int adjusted = 0;
+
+	total_calls++;
+
+	/* Critical section, so disable irqs */
+	uint32_t saved = LOCK_IRQ_SAVE();
 	/* Write target value _first_ */
 	FRC2->ALARM = timer_expire;
 	/* Then get current count to check if it already expired */
-	int t_now = FRC2->COUNT;
+	int t_now = FRC2->COUNT + safety_margin;
 	if (TIME_AFTER(t_now, timer_expire)) {
-		/* timer already expired, reschedule to near future to
+		/* timer close to expiry, reschedule to near future to
 		 * make sure the interrupt is fired */
-		FRC2->ALARM = t_now + safety_margin;
+		FRC2->ALARM = t_now;
 		/* TODO: If there is a way to manually set the interrupt flag,
 		 * no safety_margin would be needed here */
+		adjusted = 1;
+		total_adjusts++;
 	}
+	/* Restore irqs */
 	LOCK_IRQ_RESTORE(saved);
+
+	if (adjusted) {
+		ets_printf("ets_rtc_timer_arm: used %08x instead of %08x (%d/%d)\n",
+			t_now, timer_expire,
+			total_adjusts, total_calls);
+	}
 #endif
 }
 
