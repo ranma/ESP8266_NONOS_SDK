@@ -344,15 +344,14 @@ endif
 endif
 
 $(OBJODIR)/%.o: %.c
-	@mkdir -p $(OBJODIR);
+	@mkdir -p $(basename $@);
 	$(CC) $(if $(findstring $<,$(DSRCS)),$(DFLAGS),$(CFLAGS)) $(COPTS_$(*F)) -o $@ -c $<
 
 %.s: %.c
-	@mkdir -p $(OBJODIR);
 	$(CC) $(if $(findstring $<,$(DSRCS)),$(DFLAGS),$(CFLAGS)) $(COPTS_$(*F)) -g -fverbose-asm -S -o $@ -c $<
 
 $(OBJODIR)/%.d: %.c
-	@mkdir -p $(OBJODIR);
+	@mkdir -p $(basename $@);
 	@echo DEPEND: $(CC) -M $(CFLAGS) $<
 	@set -e; rm -f $@; \
 	$(CC) -M $(CFLAGS) $< > $@.$$$$; \
@@ -360,33 +359,33 @@ $(OBJODIR)/%.d: %.c
 	rm -f $@.$$$$
 
 $(OBJODIR)/%.o: %.cpp
-	@mkdir -p $(OBJODIR);
+	@mkdir -p $(basename $@);
 	$(CXX) $(if $(findstring $<,$(DSRCS)),$(DFLAGS),$(CFLAGS)) $(COPTS_$(*F)) -o $@ -c $<
 
 $(OBJODIR)/%.d: %.cpp
-	@mkdir -p $(OBJODIR);
+	@mkdir -p $(basename $@);
 	@echo DEPEND: $(CXX) -M $(CFLAGS) $<
 	@set -e; rm -f $@; \
 	sed 's,\($*\.o\)[ :]*,$(OBJODIR)/\1 $@ : ,g' < $@.$$$$ > $@; \
 	rm -f $@.$$$$
 
 $(OBJODIR)/%.o: %.s
-	@mkdir -p $(OBJODIR);
+	@mkdir -p $(basename $@);
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 $(OBJODIR)/%.d: %.s
-	@mkdir -p $(OBJODIR); \
+	@mkdir -p $(basename $@); \
 	set -e; rm -f $@; \
 	$(CC) -M $(CFLAGS) $< > $@.$$$$; \
 	sed 's,\($*\.o\)[ :]*,$(OBJODIR)/\1 $@ : ,g' < $@.$$$$ > $@; \
 	rm -f $@.$$$$
 
 $(OBJODIR)/%.o: %.S
-	@mkdir -p $(OBJODIR);
+	@mkdir -p $(basename $@);
 	$(CC) $(CFLAGS) -D__ASSEMBLER__ -o $@ -c $<
 
 $(OBJODIR)/%.d: %.S
-	@mkdir -p $(OBJODIR); \
+	@mkdir -p $(basename $@); \
 	set -e; rm -f $@; \
 	$(CC) -M $(CFLAGS) $< > $@.$$$$; \
 	sed 's,\($*\.o\)[ :]*,$(OBJODIR)/\1 $@ : ,g' < $@.$$$$ > $@; \
