@@ -30,6 +30,17 @@ endif
 #DEFINES +=
 #CCFLAGS +=
 CCFLAGS += -std=gnu11
+ifeq ($(LIBLWIP_VER), 1)
+DEFINES += -DLIBLWIP_VER=1
+DDEFINES += -DLIBLWIP_VER=1
+else
+DEFINES += -DLIBLWIP_VER=2
+DDEFINES += -DLIBLWIP_VER=2
+LWIP2_ROOT := $(PWD)/../lwip2
+export LWIP2_ROOT
+INCLUDES += -I $${LWIP2_ROOT}/include -I $${LWIP2_ROOT}/src/include
+endif
+
 
 #############################################################
 # Recursion Magic - Don't touch this!!

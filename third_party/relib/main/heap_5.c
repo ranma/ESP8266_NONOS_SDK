@@ -123,7 +123,7 @@ task.h is included from an application file. */
 #define MPU_WRAPPERS_INCLUDED_FROM_API_FILE
 
 #include "ets_sys.h"
-#include "user_interface.h"
+#include "osapi.h"
 #include "relib/ets_rom.h"
 #include "relib/relib.h"
 

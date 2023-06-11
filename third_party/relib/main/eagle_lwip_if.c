@@ -10,6 +10,27 @@
 #include "lwip/err.h"
 #include "lwip/netif.h"
 #include "lwip/pbuf.h"
+
+#if LIBLWIP_VER == 2
+struct ip_addr {
+	ip4_addr_t addr;
+};
+
+struct ip_info {
+	ip4_addr_t ip;
+	ip4_addr_t netmask;
+	ip4_addr_t gw;
+};
+#define IP_ADDR_T const ip4_addr_t
+#define IPSTR "%d.%d.%d.%d"
+#define IP2STR(ipaddr) ip4_addr1_16(ipaddr), \
+    ip4_addr2_16(ipaddr), \
+    ip4_addr3_16(ipaddr), \
+    ip4_addr4_16(ipaddr)
+#else
+#define IP_ADDR_T ip_addr_t
+#endif
+
 #include "lwip/app/dhcpserver.h"
 
 #define QUEUE_LEN 10
@@ -51,7 +72,7 @@ typedef struct {
 
 static_assert(OFFSET_OF(ieee80211com_st, ic_ifx_conn) == 16, "ic_ifx_conn offset mismatch");
 
-err_t etharp_output(struct netif *netif, struct pbuf *q, ip_addr_t *ipaddr); /* netif_output_fn */
+err_t etharp_output(struct netif *netif, struct pbuf *q, IP_ADDR_T *ipaddr); /* netif_output_fn */
 err_t ethernet_input(struct pbuf *p, struct netif *netif);
 err_t ieee80211_output_pbuf(struct netif *netif, struct pbuf *p);
 int system_pp_recycle_rx_pkt(void *eb);
@@ -171,6 +192,16 @@ eagle_lwip_if_free(ieee80211_conn_st *conn)
 	}
 }
 
+static void ICACHE_FLASH_ATTR
+netif_set_dhcp_event_cb(struct netif *netif)
+{
+#if LIBLWIP_VER == 1
+	netif->dhcp_event = wifi_station_dhcpc_event;
+#else
+	/* TODO */
+#endif
+}
+
 struct netif* ICACHE_FLASH_ATTR
 eagle_lwip_if_alloc(ieee80211_conn_st *conn, uint8_t *macaddr, ip_info_st *ipinfo)
 {
@@ -201,7 +232,7 @@ eagle_lwip_if_alloc(ieee80211_conn_st *conn, uint8_t *macaddr, ip_info_st *ipinf
 
 	ip_info_st ipi = *ipinfo;
 	if (conn->opmode == IEEE80211_M_STA) {
-		netif->dhcp_event = wifi_station_dhcpc_event;
+		netif_set_dhcp_event_cb(netif);
 		if (wifi_station_dhcpc_status() == DHCP_STARTED) {
 			memset(&ipi, 0, sizeof(ipi));
 		}
