@@ -17,9 +17,22 @@ FLAVOR = debug
 
 COMPILE      ?= gcc
 SPI_SIZE_MAP ?= 4  # 4MiB / 16Mbit
-export COMPILE SPI_SIZE_MAP
+LIBLWIP_VER  ?= 1
+export COMPILE SPI_SIZE_MAP LIBLWIP_VER
 
 #EXTRA_CCFLAGS += -u
+
+ifeq ($(LIBLWIP_VER), 1)
+LWIP_SUBDIR := ../third_party/lwip
+LWIP_LIB := ../third_party/lwip/liblwip.a
+DEFINES += -DLIBLWIP_VER=1
+DDEFINES += -DLIBLWIP_VER=1
+else
+LWIP_SUBDIR := ../third_party/lwip2
+LWIP_LIB := ../third_party/lwip2/liblwip.a
+DEFINES += -DLIBLWIP_VER=2
+DDEFINES += -DLIBLWIP_VER=2
+endif
 
 ifndef PDIR # {
 GEN_IMAGES= eagle.app.v6.out
@@ -28,7 +41,7 @@ SPECIAL_MKTARGETS=$(APP_MKTARGETS)
 SUBDIRS= \
     ../lib/weak \
     ../third_party/relib \
-    ../third_party/lwip \
+    $(LWIP_SUBDIR) \
     user \
     lwip1 \
 
@@ -57,7 +70,7 @@ COMPONENTS_eagle.app.v6 = \
     user/libuser.a \
     lwip1/liblwip1.a \
     ../third_party/relib/librelib.a \
-    ../third_party/lwip/liblwip.a
+    $(LWIP_LIB)
 
 LINKFLAGS_eagle.app.v6 = \
     -L../lib/weak \
