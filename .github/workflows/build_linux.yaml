@@ -31,20 +31,26 @@ jobs:
           ./xtensa-lx106-elf/bin/xtensa-lx106-elf-gcc -v
           echo ${PWD}/xtensa-lx106-elf/bin/ >> $GITHUB_PATH
 
-      - name: Test build hello_nolwip
+      - name: Build hello_nolwip
         run: |
           cd hello_nolwip
           make clean
           make
 
-      - name: Test build hello_esp8266
+      - name: Build hello_esp8266 (lwip2)
+        run: |
+          cd hello_esp8266
+          make clean
+          make LIBLWIP_VER=2
+
+      - name: Build hello_esp8266
         run: |
           cd hello_esp8266
           make clean
           make
           make iramsize.txt && cp iramsize.txt ../../iramsize.head
 
-      - name: Test build hello_esp8266 at previous commit
+      - name: Build hello_esp8266 at previous commit
         run: |
           cd hello_esp8266
           git checkout HEAD~1
