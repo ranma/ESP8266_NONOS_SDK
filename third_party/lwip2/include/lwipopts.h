@@ -1612,7 +1612,7 @@
  * changes its up/down status (i.e., due to DHCP IP acquisition)
  */
 #if !defined LWIP_NETIF_STATUS_CALLBACK || defined __DOXYGEN__
-#define LWIP_NETIF_STATUS_CALLBACK      1 // 0
+#define LWIP_NETIF_STATUS_CALLBACK      0
 #endif
 
 /**
@@ -1678,7 +1678,7 @@
  * data in client_data member array of struct netif (max. 256).
  */
 #if !defined LWIP_NUM_NETIF_CLIENT_DATA || defined __DOXYGEN__
-#define LWIP_NUM_NETIF_CLIENT_DATA      0
+#define LWIP_NUM_NETIF_CLIENT_DATA      1
 #endif
 /**
  * @}
@@ -2287,7 +2287,7 @@
  * ATTENTION: if enabled, the CHECKSUM_GEN_* and CHECKSUM_CHECK_* defines must be enabled!
  */
 #if !defined LWIP_CHECKSUM_CTRL_PER_NETIF || defined __DOXYGEN__
-#define LWIP_CHECKSUM_CTRL_PER_NETIF    1 // 0
+#define LWIP_CHECKSUM_CTRL_PER_NETIF    0
 #endif
 
 /**
