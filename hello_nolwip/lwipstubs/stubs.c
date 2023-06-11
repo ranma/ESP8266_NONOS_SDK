@@ -1,8 +1,13 @@
+#include <assert.h>
 #include <stdint.h>
 #include "c_types.h" /* for ICACHE_FLASH_ATTR */
 #include "mem.h"
 #include "osapi.h"
 #include "relib/s/lwip1_pbuf.h"
+
+#define OFFSET_OF(s, f) __builtin_offsetof(s, f)
+
+static_assert(OFFSET_OF(struct pbuf, eb) == 16, "pbuf eb offset mismatch");
 
 #define DPRINT(msg) do { \
 	uint32_t caller = (uint32_t)__builtin_return_address(0); \
@@ -471,6 +476,18 @@ struct eth_addr {
 	uint8_t addr[6];
 } __attribute__((packed));
 const struct eth_addr ethbroadcast = {{0xff,0xff,0xff,0xff,0xff,0xff}}; /* refernced by ieee80211.o */
+
+struct pbuf* ICACHE_FLASH_ATTR
+lwip1_pbuf_alloc(pbuf_layer l, uint16_t length, pbuf_type type)
+{
+	return pbuf_alloc(l, length, type);
+}
+
+uint8_t ICACHE_FLASH_ATTR
+lwip1_pbuf_free(struct pbuf *p)
+{
+	return pbuf_free(p);
+}
 
 /*
 ../lib/weak/libpp.a(pp.o): In function `ppRecycleRxPkt':
