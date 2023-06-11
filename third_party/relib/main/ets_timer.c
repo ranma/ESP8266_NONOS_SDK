@@ -4,20 +4,11 @@
 #include "osapi.h"
 
 #include "relib/esp8266.h"
+#include "relib/xtensa.h"
 #include "relib/ets_rom.h"
 #include "relib/ets_timer.h"
 
 #define ARRAY_SIZE(a) (sizeof((a)) / sizeof(*(a)))
-
-#define LOCK_IRQ_SAVE() ({ \
-	uint32_t ps; \
-	__asm__ __volatile__("rsil %0, 3\n" : "=a"(ps) ::); \
-	ps; \
-})
-
-#define LOCK_IRQ_RESTORE(c) do { \
-	__asm__ __volatile__("wsr %0, PS\n" :: "a"(c) :); \
-} while (0)
 
 /* Check if t1 is after t2 */
 #define TIME_AFTER(t1, t2) ((int)(t1 - t2) > 0)

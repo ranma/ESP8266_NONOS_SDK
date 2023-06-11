@@ -10,6 +10,7 @@
 #include "mem.h"
 
 #include "relib/esp8266.h"
+#include "relib/xtensa.h"
 #include "relib/ets_rom.h"
 #include "relib/ets_timer.h"
 #include "relib/relib.h"
@@ -492,6 +493,67 @@ Cache_Read_Enable_New(void)
 {
 	int user_iram = user_iram_memory_is_enabled(); /* returns 0, weak symbol? */
 	Cache_Read_Enable(cache_map, 0, !user_iram);
+}
+
+static const char *exceptions[30] = {
+	"IllegalInstructionCause",
+	"SyscallCause",
+	"InstructionFetchErrorCause",
+	"LoadStoreErrorCause",
+	"Level1InterruptCause",
+	"AllocaCause",
+	"IntegerDivideByZeroCause",
+	"Reserved",
+	"PrivilegedCause",
+	"LoadStoreAlignmentCause",
+	"Reserved10",
+	"Reserved11",
+	"InstrPIFDateErrorCause",
+	"LoadStorePIFDataErrorCause",
+	"InstrPIFAddrErrorCause",
+	"LoadStorePIFAddrErrorCause",
+	"InstTLBMissCause",
+	"InstTLBMultiHitCause",
+	"InstFetchPrivilegeCause",
+	"Reserved19",
+	"InstFetchProhibitedCause",
+	"Reserved21",
+	"Reserved22",
+	"Reserved23",
+	"LoadStoreTLBMissCause",
+	"LoadStoreTLBMultiHitCause",
+	"LoadStorePrivilegeCause",
+	"Reserved27",
+	"LoadProhibitedCause",
+	"StoreProhibitedCause",
+};
+
+void ICACHE_FLASH_ATTR
+ets_fatal_exception_handler(xtos_exception_frame_t *ef, int cause)
+{
+	uint32_t excvaddr = RSR(EXCVADDR);
+	os_printf_plus("Fatal exception %d (%s)\n", cause, exceptions[cause]);
+	os_printf_plus("epc=%08x excvaddr=%08x ps=%08x\n",
+		ef->epc, excvaddr, ef->ps);
+	os_printf_plus("a0=%08x a2=%08x a3=%08x a4=%08x a5=%08x a6=%08x\n",
+		ef->a0, ef->a2, ef->a3, ef->a4, ef->a5, ef->a6);
+
+	RTC->STORE[0] = 2;
+#if 1
+	while (1);
+#else
+	system_rtc_mem_write(false, &exc_regs, 0x1c);
+	system_restart_local();
+#endif
+}
+
+void
+user_fatal_exception_handler(xtos_exception_frame_t *ef, int cause)
+{
+	LOCK_IRQ_SAVE();
+	Wait_SPI_Idle(flashchip);
+	Cache_Read_Enable_New();
+	ets_fatal_exception_handler(ef, cause);
 }
 
 static uint8_t
