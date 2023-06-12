@@ -22,16 +22,16 @@ export COMPILE SPI_SIZE_MAP LIBLWIP_VER
 
 #EXTRA_CCFLAGS += -u
 
-ifeq ($(LIBLWIP_VER), 1)
-LWIP_SUBDIR := ../third_party/lwip
-LWIP_LIB := ../third_party/lwip/liblwip.a
-DEFINES += -DLIBLWIP_VER=1
-DDEFINES += -DLIBLWIP_VER=1
-else
+ifeq ($(LIBLWIP_VER), 2)
 LWIP_SUBDIR := ../third_party/lwip2
 LWIP_LIB := ../third_party/lwip2/liblwip.a
 DEFINES += -DLIBLWIP_VER=2
 DDEFINES += -DLIBLWIP_VER=2
+else
+LWIP_SUBDIR := ../third_party/lwip
+LWIP_LIB := ../third_party/lwip/liblwip.a
+DEFINES += -DLIBLWIP_VER=1
+DDEFINES += -DLIBLWIP_VER=1
 endif
 
 ifndef PDIR # {
