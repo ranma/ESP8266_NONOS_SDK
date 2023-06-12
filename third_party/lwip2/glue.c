@@ -23,7 +23,11 @@ static_assert(OFFSET_OF(struct netif, linkoutput) == 24, "netif linkoutput offse
 static_assert(OFFSET_OF(struct netif, state) == 28, "netif state offset mismatch");
 static_assert(OFFSET_OF(struct netif, hostname) == 44, "netif hostname offset mismatch");
 static_assert(OFFSET_OF(struct netif, mtu) == 48, "netif mtu offset mismatch");
+static_assert(OFFSET_OF(struct netif, hwaddr_len) == 50, "netif hwaddr_len offset mismatch");
+static_assert(OFFSET_OF(struct netif, hwaddr) == 51, "netif hwaddr offset mismatch");
 static_assert(OFFSET_OF(struct netif, flags) == 57, "netif flags offset mismatch");
+static_assert(OFFSET_OF(struct netif, name) == 58, "netif name offset mismatch");
+static_assert(OFFSET_OF(struct netif, num) == 60, "netif num offset mismatch");
 
 struct ip_info;
 

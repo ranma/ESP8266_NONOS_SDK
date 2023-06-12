@@ -340,10 +340,10 @@ struct netif {
   /** maximum transfer unit (in bytes), updated by RA */
   u16_t mtu6;
 #endif /* LWIP_IPV6 && LWIP_ND6_ALLOW_RA_UPDATES */
-  /** link level hardware address of this interface */
-  u8_t hwaddr[NETIF_MAX_HWADDR_LEN];
   /** number of bytes used in hwaddr */
   u8_t hwaddr_len;
+  /** link level hardware address of this interface */
+  u8_t hwaddr[NETIF_MAX_HWADDR_LEN];
   /** flags (@see @ref netif_flags) */
   u8_t flags;
   /** descriptive abbreviation */
