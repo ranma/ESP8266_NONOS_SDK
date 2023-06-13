@@ -64,19 +64,23 @@ lwip1_pbuf_alloc(lwip1_pbuf_layer l, uint16_t length, lwip1_pbuf_type type)
 	pbuf_layer lwip2_l = PBUF_RAW;
 	pbuf_type lwip2_type = PBUF_RAM;
 	switch (l) {
-	case LWIP1_PBUF_TRANSPORT: lwip2_type = PBUF_TRANSPORT; break;
-	case LWIP1_PBUF_IP: lwip2_type = PBUF_IP; break;
-	case LWIP1_PBUF_LINK: lwip2_type = PBUF_LINK; break;
-	case LWIP1_PBUF_RAW: lwip2_type = PBUF_RAW; break;
+	case LWIP1_PBUF_TRANSPORT: lwip2_l = PBUF_TRANSPORT; break;
+	case LWIP1_PBUF_IP:        lwip2_l = PBUF_IP; break;
+	case LWIP1_PBUF_LINK:      lwip2_l = PBUF_LINK; break;
+	case LWIP1_PBUF_RAW:       lwip2_l = PBUF_RAW; break;
 	}
 	switch (type) {
-	case LWIP1_PBUF_RAM:    lwip2_l = PBUF_RAM; break;
-	case LWIP1_PBUF_ROM:    lwip2_l = PBUF_ROM; break;
-	case LWIP1_PBUF_REF:    lwip2_l = PBUF_REF; break;
-	case LWIP1_PBUF_POOL:   lwip2_l = PBUF_POOL; break;
-	case LWIP1_PBUF_ESF_RX: lwip2_l = PBUF_REF; break;
+	case LWIP1_PBUF_RAM:    lwip2_type = PBUF_RAM; break;
+	case LWIP1_PBUF_ROM:    lwip2_type = PBUF_ROM; break;
+	case LWIP1_PBUF_REF:    lwip2_type = PBUF_REF; break;
+	case LWIP1_PBUF_POOL:   lwip2_type = PBUF_POOL; break;
+	case LWIP1_PBUF_ESF_RX: lwip2_type = PBUF_REF; break;
 	}
-	return pbuf_alloc(lwip2_l, length, lwip2_type);
+	os_printf("pbuf_alloc(%d->%d, %d, %d->%d)\n",
+		l, lwip2_l, length, type, lwip2_type);
+	struct pbuf *p = pbuf_alloc(lwip2_l, length, lwip2_type);
+	p->eb = NULL;
+	return p;
 }
 
 uint8_t ICACHE_FLASH_ATTR
