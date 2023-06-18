@@ -84,8 +84,8 @@ void ets_task(ETSTask task, int prio, ETSEvent *queue, uint8_t qlen);
 extern uint8_t dhcps_flag; /* user_interface.o */
 extern ieee80211com_st g_ic; /* defined in ieee80211.c */
 
-ETSEvent* lwipIf0EvtQueue;
-ETSEvent* lwipIf1EvtQueue;
+static ETSEvent lwipIf0EvtQueue[QUEUE_LEN];
+static ETSEvent lwipIf1EvtQueue[QUEUE_LEN];
 char *hostname;
 bool default_hostname;
 
@@ -171,20 +171,12 @@ eagle_lwip_if_free(ieee80211_conn_st *conn)
 {
 	if (conn->opmode == IEEE80211_M_STA) {
 		netif_remove(conn->ni_ifp);
-		if (lwipIf0EvtQueue != NULL) {
-			os_free(lwipIf0EvtQueue);
-			lwipIf0EvtQueue = NULL;
-		}
 	}
 	else {
 		if (dhcps_flag) {
 			dhcps_stop();
 		}
 		netif_remove(conn->ni_ifp);
-		if (lwipIf1EvtQueue != NULL) {
-			os_free(lwipIf0EvtQueue);
-			lwipIf1EvtQueue = NULL;
-		}
 	}
 	if (conn->ni_ifp != NULL) {
 		os_free(conn->ni_ifp);
@@ -236,17 +228,11 @@ eagle_lwip_if_alloc(ieee80211_conn_st *conn, uint8_t *macaddr, ip_info_st *ipinf
 		if (wifi_station_dhcpc_status() == DHCP_STARTED) {
 			memset(&ipi, 0, sizeof(ipi));
 		}
-		if (lwipIf0EvtQueue == NULL) {
-			lwipIf0EvtQueue = os_malloc(sizeof(ETSEvent) * QUEUE_LEN);
-		}
 		ets_task(lwip_if0_task, LWIP_IF0_TASK_NUM, lwipIf0EvtQueue, QUEUE_LEN);
 		netif_add(netif, &ipi.ip, &ipi.netmask, &ipi.gw, conn, eagle_low_level_init, ethernet_input);
 	}
 	else {
 		netif_set_addr(netif, &ipi.ip, &ipi.netmask, &ipi.gw);
-		if (lwipIf1EvtQueue == NULL) {
-			lwipIf1EvtQueue = os_malloc(sizeof(ETSEvent) * QUEUE_LEN);
-		}
 		ets_task(lwip_if1_task, LWIP_IF1_TASK_NUM, lwipIf1EvtQueue, QUEUE_LEN);
 		netif_add(netif, &ipi.ip, &ipi.netmask, &ipi.gw, conn, eagle_low_level_init, ethernet_input);
 		if (dhcps_flag != false) {
