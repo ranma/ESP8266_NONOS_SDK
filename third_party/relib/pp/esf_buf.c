@@ -1,3 +1,5 @@
+#define MEM_DEFAULT_USE_DRAM 1
+
 #include <assert.h>
 #include <stdint.h>
 #include "c_types.h"
@@ -14,6 +16,8 @@
 #include "relib/xtensa.h"
 
 #include "lwip/pbuf.h"
+
+#define DEBUG 0
 
 /*
 3ffee9e0 V ebCtx_30
@@ -88,6 +92,11 @@ struct buf_holder {
 esf_buf_st* ICACHE_FLASH_ATTR
 esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 {
+#if DEBUG == 1
+	void *caller = __builtin_return_address(0);
+	os_printf("[@%p] esf_buf_alloc(%p, %d, %d)\n",
+		caller, pb, type, len);
+#endif
 	if ((type == ESF_BUF_TX_PB) && (pb != NULL)) {
 		if ((uint32_t)pb >= 0x40000000) {
 			os_printf("s_pb:0x%08x\n", (uint32_t)pb);
@@ -140,6 +149,7 @@ esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 		} else {
 			eb->tx_desc->flags = 0x1000000;
 		}
+		eb->buf_begin = holder->buf;
 		eb->ds_head->buf = holder->buf;
 		return eb;
 	}
@@ -149,6 +159,11 @@ esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 void ICACHE_FLASH_ATTR
 esf_buf_recycle(esf_buf_st *eb, esf_buf_type_t type)
 {
+#if DEBUG == 1
+	void *caller = __builtin_return_address(0);
+	os_printf("[@%p] esf_buf_recycle(%p, %d)\n",
+		caller, eb, type);
+#endif
 	if ((type == ESF_BUF_TX_PB) || (type == ESF_BUF_TX_SIP)) {
 		memset(eb->tx_desc,0,0x20);
 		esf_put_freelist_entry(&ebCtx.eb_tx_free_list, eb);

@@ -63,6 +63,8 @@ OBJ_REMOVE_libmain.a = mem_manager.o \
 	ets_timer.o \
 	esf_buf.o
 
+OBJ_REMOVE_libpp.a = esf_buf.o
+
 EMPTY :=
 SPACE := $(EMPTY) $(EMPTY)
 KEEP_LOCAL_RE = $(subst $(SPACE),|,$(KEEP_LOCAL))
