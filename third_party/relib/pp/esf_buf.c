@@ -37,7 +37,6 @@ static const char mem_debug_file[] ICACHE_RODATA_ATTR STORE_ATTR = "esf_buf.c";
 extern wdev_control_st wDevCtrl;
 
 esf_buf_ctx_st ebCtx;
-int g_free_rxblock_eb_cnt;
 
 /* esf_buf_st is 40 byte */
 esf_buf_st eb_space[27];                    /* 1088 / 40 => 27 */
@@ -60,17 +59,21 @@ pbuf_is_ram_type(struct pbuf *p)
 #endif
 }
 
+#define GET_FREELIST_ENTRY(freelist) ({ \
+	uint32_t saved = LOCK_IRQ_SAVE(); \
+	esf_buf_st *entry = *freelist; \
+	if (entry != NULL) { \
+		*freelist = entry->stqe_next; \
+		entry->stqe_next = NULL; \
+	} \
+	LOCK_IRQ_RESTORE(saved); \
+	entry; \
+})
+
 esf_buf_st* ICACHE_FLASH_ATTR
 esf_get_freelist_entry(esf_buf_st **freelist)
 {
-	uint32_t saved = LOCK_IRQ_SAVE();
-	esf_buf_st *entry = *freelist;
-	if (entry != NULL) {
-		*freelist = entry->stqe_next;
-		entry->stqe_next = NULL;
-	}
-	LOCK_IRQ_RESTORE(saved);
-	return entry;
+	return GET_FREELIST_ENTRY(freelist);
 }
 
 void ICACHE_FLASH_ATTR
@@ -251,19 +254,10 @@ esf_buf_setup(void)
 esf_buf_st* /* IRAM */
 esf_rx_buf_alloc(esf_buf_type_t type)
 {
-	esf_buf_st *eb = NULL;
-
 	if (type == ESF_BUF_RX_BLOCK) {
-		uint32_t saved = LOCK_IRQ_SAVE();
-		eb = ebCtx.eb_rx_block_free_list;
-		if (eb != NULL) {
-			ebCtx.eb_rx_block_free_list = eb->stqe_next;
-			eb->stqe_next = NULL;
-			g_free_rxblock_eb_cnt--;
-		}
-		LOCK_IRQ_RESTORE(saved);
+		return GET_FREELIST_ENTRY(&ebCtx.eb_rx_block_free_list);
 	}
-	return eb;
+	return NULL;
 }
 
 /*
