@@ -78,18 +78,16 @@ esf_put_freelist_entry(esf_buf_st **freelist, esf_buf_st *eb)
 	LOCK_IRQ_RESTORE(saved);
 }
 
+struct buf_holder {
+	esf_buf_st eb;
+	lldesc_st head;
+	esf_tx_desc_st tx_desc;
+	uint8_t buf[0];
+};
+
 esf_buf_st* ICACHE_FLASH_ATTR
 esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 {
-	uint16_t uVar1;
-	uint32_t uVar2;
-	esf_buf_st *new_eb;
-	lldesc_st *plVar3;
-	uint8_t *puVar4;
-	uint32_t uVar5;
-	esf_tx_desc_st *peVar6;
-	uint8_t *puVar7;
-	
 	if ((type == ESF_BUF_TX_PB) && (pb != NULL)) {
 		if ((uint32_t)pb >= 0x40000000) {
 			os_printf("s_pb:0x%08x\n", (uint32_t)pb);
@@ -111,56 +109,6 @@ esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 		entry->buf_begin = buf - EP_OFFSET;
 		return entry;
 	}
-	else if (type == ESF_BUF_MGMT_LBUF) {
-		new_eb = (esf_buf_st *)pvPortMalloc(0x28,mem_debug_file,0x170,false);
-		if (new_eb == NULL) {
-			return NULL;
-		}
-		if ((uint32_t)new_eb < 0x40000000) {
-			plVar3 = (lldesc_st *)pvPortMalloc(0xc,mem_debug_file,0x179,false);
-			new_eb->ds_head = plVar3;
-			if (plVar3 != NULL) {
-				if (plVar3 < (lldesc_st *)0x40000001) {
-					new_eb->ds_tail = plVar3;
-					new_eb->ds_len = 1;
-					peVar6 = (esf_tx_desc_st *)pvPortZalloc(0x20,mem_debug_file,0x184);
-					(new_eb->desc).tx_desc = peVar6;
-					if (peVar6 != NULL) {
-						if (peVar6 < (esf_tx_desc_st *)0x40000001) {
-							memset(peVar6,0,0x20);
-							uVar2 = *(uint32_t *)(new_eb->desc).tx_desc;
-							*(uint32_t *)(new_eb->desc).tx_desc = uVar2 & 0x3f | (uVar2 >> 6 | 0x4000) << 6;
-							puVar4 = (uint8_t *)pvPortMalloc(len,mem_debug_file,0x191,false);
-							new_eb->buf_begin = puVar4;
-							if (puVar4 != NULL) {
-								if (puVar4 < (uint8_t *)0x40000001) {
-									new_eb->ds_head->buf = puVar4;
-									return new_eb;
-								}
-								vPortFree(puVar4,mem_debug_file,0x194);
-							}
-							vPortFree((new_eb->desc).tx_desc,mem_debug_file,0x196);
-							(new_eb->desc).tx_desc = NULL;
-							vPortFree(new_eb->ds_head,mem_debug_file,0x198);
-							new_eb->ds_head = NULL;
-							vPortFree(new_eb,mem_debug_file,0x19a);
-							return NULL;
-						}
-						vPortFree(peVar6,mem_debug_file,0x187);
-					}
-					vPortFree(new_eb->ds_head,mem_debug_file,0x189);
-					new_eb->ds_head = NULL;
-					vPortFree(new_eb,mem_debug_file,0x18b);
-					return NULL;
-				}
-				vPortFree(plVar3,mem_debug_file,0x17c);
-			}
-			vPortFree(new_eb,mem_debug_file,0x17e);
-		}
-		else {
-			vPortFree(new_eb,mem_debug_file,0x173);
-		}
-	}
 	else if (type == ESF_BUF_MGMT_SBUF) {
 		esf_buf_st *entry = esf_get_freelist_entry(&ebCtx.eb_mgmt_s_free_list);
 		memset(entry->tx_desc,0,sizeof(*entry->tx_desc));
@@ -168,60 +116,32 @@ esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 		entry->ds_head->buf = entry->buf_begin;
 		return entry;
 	}
-	else if (type == ESF_BUF_MGMT_LLBUF) {
-		esf_buf_st *entry = pvPortMalloc(0x28,mem_debug_file,0x1bd,false);
-		if (entry < (esf_buf_st *)0x40000001) {
-			if (entry == NULL) {
-				return NULL;
-			}
-			plVar3 = (lldesc_st *)pvPortMalloc(0xc,mem_debug_file,0x1c5,false);
-			entry->ds_head = plVar3;
-			if (plVar3 != NULL) {
-				if (plVar3 < (lldesc_st *)0x40000001) {
-					entry->ds_tail = plVar3;
-					entry->ds_len = 1;
-					peVar6 = (esf_tx_desc_st *)pvPortMalloc(0x20,mem_debug_file,0x1d0,false);
-					(entry->desc).tx_desc = peVar6;
-					if (peVar6 != NULL) {
-						if (peVar6 < (esf_tx_desc_st *)0x40000001) {
-							memset(peVar6,0,0x20);
-							uVar2 = *(uint32_t *)(entry->desc).tx_desc;
-							*(uint32_t *)(entry->desc).tx_desc = uVar2 & 0x3f | (uVar2 >> 6 | 0x1000000) << 6;
-							puVar4 = (uint8_t *)pvPortMalloc(len,mem_debug_file,0x1dd,false);
-							entry->buf_begin = puVar4;
-							if (puVar4 != NULL) {
-								if (puVar4 < (uint8_t *)0x40000001) {
-									entry->ds_head->buf = puVar4;
-									return entry;
-								}
-								vPortFree(puVar4,mem_debug_file,0x1e0);
-							}
-							vPortFree((entry->desc).tx_desc,mem_debug_file,0x1e2);
-							(entry->desc).tx_desc = NULL;
-							vPortFree(entry->ds_head,mem_debug_file,0x1e4);
-							entry->ds_head = NULL;
-							vPortFree(entry,mem_debug_file,0x1e6);
-							return NULL;
-						}
-						vPortFree(peVar6,mem_debug_file,0x1d3);
-					}
-					vPortFree(entry->ds_head,mem_debug_file,0x1d5);
-					entry->ds_head = NULL;
-					vPortFree(entry,mem_debug_file,0x1d7);
-					return NULL;
-				}
-				vPortFree(plVar3,mem_debug_file,0x1c8);
-			}
-			vPortFree(entry,mem_debug_file,0x1ca);
-		}
-		else {
-			vPortFree(entry,mem_debug_file,0x1c0);
-		}
-	}
 	else if (type == ESF_BUF_BAR) {
 		esf_buf_st *entry = esf_get_freelist_entry(&ebCtx.eb_tx_bar_free_list);
 		entry->tx_desc->flags = 0x200000;
 		return entry;
+	}
+	else if (type == ESF_BUF_MGMT_LBUF || type == ESF_BUF_MGMT_LLBUF) {
+		struct buf_holder *holder = os_zalloc(sizeof(*holder) + len);
+		if (holder == NULL) {
+			return NULL;
+		}
+		if ((uint32_t)holder >= 0x40000000) {
+			os_free(holder);
+			return NULL;
+		}
+		esf_buf_st *eb = &holder->eb;
+		eb->ds_head = &holder->head;
+		eb->ds_tail = &holder->head;
+		eb->ds_len = 1;
+		eb->tx_desc = &holder->tx_desc;
+		if (type == ESF_BUF_MGMT_LBUF) {
+			eb->tx_desc->flags = 0x4000;
+		} else {
+			eb->tx_desc->flags = 0x1000000;
+		}
+		eb->ds_head->buf = holder->buf;
+		return eb;
 	}
 	return NULL;
 }
@@ -233,21 +153,9 @@ esf_buf_recycle(esf_buf_st *eb, esf_buf_type_t type)
 		memset(eb->tx_desc,0,0x20);
 		esf_put_freelist_entry(&ebCtx.eb_tx_free_list, eb);
 	}
-	else if (type == ESF_BUF_MGMT_LBUF) {
-		vPortFree(eb->ds_head,mem_debug_file,0x21e);
-		vPortFree(eb->tx_desc,mem_debug_file,0x220);
-		vPortFree(eb->buf_begin,mem_debug_file,0x221);
-		vPortFree(eb,mem_debug_file,0x222);
-	}
 	else if (type == ESF_BUF_MGMT_SBUF) {
 		memset(eb->tx_desc,0,0x20);
 		esf_put_freelist_entry(&ebCtx.eb_mgmt_s_free_list, eb);
-	}
-	else if (type == ESF_BUF_MGMT_LLBUF) {
-		vPortFree(eb->ds_head,mem_debug_file,0x233);
-		vPortFree(eb->tx_desc,mem_debug_file,0x235);
-		vPortFree(eb->buf_begin,mem_debug_file,0x236);
-		vPortFree(eb,mem_debug_file,0x237);
 	}
 	else if (type == ESF_BUF_BAR) {
 		memset(eb->tx_desc,0,0x20);
@@ -256,6 +164,9 @@ esf_buf_recycle(esf_buf_st *eb, esf_buf_type_t type)
 	else if (type == ESF_BUF_RX_BLOCK) {
 		memset(eb->rx_desc,0,0xc);
 		esf_put_freelist_entry(&ebCtx.eb_rx_block_free_list, eb);
+	}
+	else if (type == ESF_BUF_MGMT_LBUF || type == ESF_BUF_MGMT_LLBUF) {
+		os_free(eb);
 	}
 }
 
