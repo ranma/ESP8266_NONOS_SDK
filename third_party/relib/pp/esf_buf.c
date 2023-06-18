@@ -26,6 +26,8 @@
 3ffef490 V interface_mask
 */
 
+#define EP_OFFSET 36
+
 static const char mem_debug_file[] ICACHE_RODATA_ATTR STORE_ATTR = "esf_buf.c";
 
 extern wdev_control_st wDevCtrl;
@@ -55,13 +57,24 @@ pbuf_is_ram_type(struct pbuf *p)
 }
 
 esf_buf_st* ICACHE_FLASH_ATTR
+esf_get_freelist_entry(esf_buf_st **freelist)
+{
+	uint32_t saved = LOCK_IRQ_SAVE();
+	esf_buf_st *entry = *freelist;
+	if (entry != NULL) {
+		*freelist = entry->stqe_next;
+		entry->stqe_next = NULL;
+	}
+	LOCK_IRQ_RESTORE(saved);
+	return entry;
+}
+
+esf_buf_st* ICACHE_FLASH_ATTR
 esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 {
 	uint16_t uVar1;
 	uint32_t uVar2;
 	esf_buf_st *new_eb;
-	esf_buf_st *freelist_head;
-	esf_buf_st *stqe;
 	lldesc_st *plVar3;
 	uint8_t *puVar4;
 	uint32_t uVar5;
@@ -73,31 +86,21 @@ esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 			os_printf("s_pb:0x%08x\n", (uint32_t)pb);
 			return NULL;
 		}
-		uint32_t saved = LOCK_IRQ_SAVE();
-		freelist_head = ebCtx.eb_tx_free_list;
-		if (ebCtx.eb_tx_free_list == NULL) {
-			LOCK_IRQ_RESTORE(saved);
-			return NULL;
-		}
-		stqe = ((ebCtx.eb_tx_free_list)->bqentry).stqe_next;
-		((ebCtx.eb_tx_free_list)->bqentry).stqe_next = NULL;
-		ebCtx.eb_tx_free_list = stqe;
-		LOCK_IRQ_RESTORE(saved);
-		memset((freelist_head->desc).tx_desc,0,0x20);
-		freelist_head->pbuf = pb;
+		esf_buf_st *entry = esf_get_freelist_entry(&ebCtx.eb_tx_free_list);
+
+		memset(entry->tx_desc,0,sizeof(*entry->tx_desc));
+		entry->tx_desc->flags = 0x2000;
+
+		entry->pbuf = pb;
 		if (pbuf_is_ram_type(pb)) {
-			pb->eb = freelist_head;
+			pb->eb = entry;
 		}
-		uVar2 = 0x2000;
-		uVar1 = pb->len;
-		peVar6 = (freelist_head->desc).tx_desc;
-		puVar7 = (u8 *)pb->payload;
-		uVar5 = *(uint32_t *)peVar6;
-		freelist_head->ds_head->buf = puVar7;
-		freelist_head->data_len = uVar1;
-		freelist_head->buf_begin = puVar7 + -0x24;
-		*(uint32_t *)peVar6 = uVar5 & 0x3f | (uVar5 >> 6 | uVar2) << 6;
-		return freelist_head;
+
+		uint8_t *buf = pb->payload;
+		entry->ds_head->buf = buf;
+		entry->data_len = pb->len;
+		entry->buf_begin = buf - EP_OFFSET;
+		return entry;
 	}
 	else if (type == ESF_BUF_MGMT_LBUF) {
 		new_eb = (esf_buf_st *)pvPortMalloc(0x28,mem_debug_file,0x170,false);
@@ -150,89 +153,66 @@ esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 		}
 	}
 	else if (type == ESF_BUF_MGMT_SBUF) {
-		uint32_t saved = LOCK_IRQ_SAVE();
-		freelist_head = ebCtx.eb_mgmt_s_free_list;
-		if (ebCtx.eb_mgmt_s_free_list == NULL) {
-			LOCK_IRQ_RESTORE(saved);
-			return NULL;
-		}
-		stqe = ((ebCtx.eb_mgmt_s_free_list)->bqentry).stqe_next;
-		((ebCtx.eb_mgmt_s_free_list)->bqentry).stqe_next = NULL;
-		ebCtx.eb_mgmt_s_free_list = stqe;
-		LOCK_IRQ_RESTORE(saved);
-		memset((freelist_head->desc).tx_desc,0,0x20);
-		uVar2 = 0x8000;
-		peVar6 = (freelist_head->desc).tx_desc;
-		freelist_head->ds_head->buf = freelist_head->buf_begin;
-		uVar5 = *(uint32_t *)peVar6;
-		*(uint32_t *)peVar6 = uVar5 & 0x3f | (uVar5 >> 6 | uVar2) << 6;
-		return freelist_head;
+		esf_buf_st *entry = esf_get_freelist_entry(&ebCtx.eb_mgmt_s_free_list);
+		memset(entry->tx_desc,0,sizeof(*entry->tx_desc));
+		entry->tx_desc->flags = 0x8000;
+		entry->ds_head->buf = entry->buf_begin;
+		return entry;
 	}
 	else if (type == ESF_BUF_MGMT_LLBUF) {
-		freelist_head = (esf_buf_st *)pvPortMalloc(0x28,mem_debug_file,0x1bd,false);
-		if (freelist_head < (esf_buf_st *)0x40000001) {
-			if (freelist_head == NULL) {
+		esf_buf_st *entry = pvPortMalloc(0x28,mem_debug_file,0x1bd,false);
+		if (entry < (esf_buf_st *)0x40000001) {
+			if (entry == NULL) {
 				return NULL;
 			}
 			plVar3 = (lldesc_st *)pvPortMalloc(0xc,mem_debug_file,0x1c5,false);
-			freelist_head->ds_head = plVar3;
+			entry->ds_head = plVar3;
 			if (plVar3 != NULL) {
 				if (plVar3 < (lldesc_st *)0x40000001) {
-					freelist_head->ds_tail = plVar3;
-					freelist_head->ds_len = 1;
+					entry->ds_tail = plVar3;
+					entry->ds_len = 1;
 					peVar6 = (esf_tx_desc_st *)pvPortMalloc(0x20,mem_debug_file,0x1d0,false);
-					(freelist_head->desc).tx_desc = peVar6;
+					(entry->desc).tx_desc = peVar6;
 					if (peVar6 != NULL) {
 						if (peVar6 < (esf_tx_desc_st *)0x40000001) {
 							memset(peVar6,0,0x20);
-							uVar2 = *(uint32_t *)(freelist_head->desc).tx_desc;
-							*(uint32_t *)(freelist_head->desc).tx_desc = uVar2 & 0x3f | (uVar2 >> 6 | 0x1000000) << 6;
+							uVar2 = *(uint32_t *)(entry->desc).tx_desc;
+							*(uint32_t *)(entry->desc).tx_desc = uVar2 & 0x3f | (uVar2 >> 6 | 0x1000000) << 6;
 							puVar4 = (uint8_t *)pvPortMalloc(len,mem_debug_file,0x1dd,false);
-							freelist_head->buf_begin = puVar4;
+							entry->buf_begin = puVar4;
 							if (puVar4 != NULL) {
 								if (puVar4 < (uint8_t *)0x40000001) {
-									freelist_head->ds_head->buf = puVar4;
-									return freelist_head;
+									entry->ds_head->buf = puVar4;
+									return entry;
 								}
 								vPortFree(puVar4,mem_debug_file,0x1e0);
 							}
-							vPortFree((freelist_head->desc).tx_desc,mem_debug_file,0x1e2);
-							(freelist_head->desc).tx_desc = NULL;
-							vPortFree(freelist_head->ds_head,mem_debug_file,0x1e4);
-							freelist_head->ds_head = NULL;
-							vPortFree(freelist_head,mem_debug_file,0x1e6);
+							vPortFree((entry->desc).tx_desc,mem_debug_file,0x1e2);
+							(entry->desc).tx_desc = NULL;
+							vPortFree(entry->ds_head,mem_debug_file,0x1e4);
+							entry->ds_head = NULL;
+							vPortFree(entry,mem_debug_file,0x1e6);
 							return NULL;
 						}
 						vPortFree(peVar6,mem_debug_file,0x1d3);
 					}
-					vPortFree(freelist_head->ds_head,mem_debug_file,0x1d5);
-					freelist_head->ds_head = NULL;
-					vPortFree(freelist_head,mem_debug_file,0x1d7);
+					vPortFree(entry->ds_head,mem_debug_file,0x1d5);
+					entry->ds_head = NULL;
+					vPortFree(entry,mem_debug_file,0x1d7);
 					return NULL;
 				}
 				vPortFree(plVar3,mem_debug_file,0x1c8);
 			}
-			vPortFree(freelist_head,mem_debug_file,0x1ca);
+			vPortFree(entry,mem_debug_file,0x1ca);
 		}
 		else {
-			vPortFree(freelist_head,mem_debug_file,0x1c0);
+			vPortFree(entry,mem_debug_file,0x1c0);
 		}
 	}
 	else if (type == ESF_BUF_BAR) {
-		uint32_t saved = LOCK_IRQ_SAVE();
-		freelist_head = ebCtx.eb_tx_bar_free_list;
-		if (ebCtx.eb_tx_bar_free_list != NULL) {
-			stqe = ((ebCtx.eb_tx_bar_free_list)->bqentry).stqe_next;
-			((ebCtx.eb_tx_bar_free_list)->bqentry).stqe_next = NULL;
-			ebCtx.eb_tx_bar_free_list = stqe;
-			LOCK_IRQ_RESTORE(saved);
-			peVar6 = (freelist_head->desc).tx_desc;
-			uVar2 = 0x200000;
-			uVar5 = *(uint32_t *)peVar6;
-			*(uint32_t *)peVar6 = uVar5 & 0x3f | (uVar5 >> 6 | uVar2) << 6;
-			return freelist_head;
-		}
-		LOCK_IRQ_RESTORE(saved);
+		esf_buf_st *entry = esf_get_freelist_entry(&ebCtx.eb_tx_bar_free_list);
+		entry->tx_desc->flags = 0x200000;
+		return entry;
 	}
 	return NULL;
 }
@@ -274,7 +254,7 @@ esf_buf_recycle(esf_buf_st *eb, esf_buf_type_t type)
 		LOCK_IRQ_RESTORE(saved);
 	}
 	else if (type == ESF_BUF_RX_BLOCK) {
-		memset(eb->tx_desc,0,0xc);
+		memset(eb->rx_desc,0,0xc);
 		uint32_t saved = LOCK_IRQ_SAVE();
 		eb->stqe_next = ebCtx.eb_rx_block_free_list;
 		ebCtx.eb_rx_block_free_list = eb;
