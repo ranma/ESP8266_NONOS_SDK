@@ -554,12 +554,13 @@ BlockLink_t *pxLink;
 /*-----------------------------------------------------------*/
 
 /*-----------------------------------------------------------*/
-void *pvPortCalloc(size_t count, size_t size, const char * file, unsigned line)
+
+static void *pvPortCallocShared(size_t count, size_t size, const char * file, unsigned line, bool use_iram)
 {
   void *p;
 //ets_printf("1,");
   /* allocate 'count' objects of size 'size' */
-  p = pvPortMalloc(count * size, file, line, false);
+  p = pvPortMalloc(count * size, file, line, use_iram);
 //ets_printf("2,");
   if (p) {
     /* zero the memory */
@@ -568,12 +569,29 @@ void *pvPortCalloc(size_t count, size_t size, const char * file, unsigned line)
 //ets_printf("3,");
   return p;
 }
+
+void *pvPortCalloc(size_t count, size_t size, const char * file, unsigned line)
+{
+	return pvPortCallocShared(count, size, file, line, false);
+}
+
+void *pvPortCallocIram(size_t count, size_t size, const char * file, unsigned line)
+{
+	return pvPortCallocShared(count, size, file, line, true);
+}
+
 /*-----------------------------------------------------------*/
 
 void *pvPortZalloc(size_t size, const char * file, unsigned line)
 {
      return pvPortCalloc(1, size, file, line);
 }
+
+void *pvPortZallocIram(size_t size, const char * file, unsigned line)
+{
+     return pvPortCallocIram(1, size, file, line);
+}
+
 /*-----------------------------------------------------------*/
 
 void *pvPortRealloc(void *mem, size_t newsize, const char *file, unsigned line)
