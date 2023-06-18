@@ -114,9 +114,6 @@
 #define configUSE_MALLOC_FAILED_HOOK		0
 #define configASSERT(x)
 
-/* MEMLEAK_DEBUG is always on (won't even compile if it is off) */
-#define MEMLEAK_DEBUG 1
-
 /* Defining MPU_WRAPPERS_INCLUDED_FROM_API_FILE prevents task.h from redefining
 all the API functions to use the MPU wrappers.  That should only be done when
 task.h is included from an application file. */
@@ -151,10 +148,8 @@ typedef struct A_BLOCK_LINK
 {
 	struct A_BLOCK_LINK *pxNextFreeBlock;	/*<< The next free block in the list. */
 	size_t xBlockSize;						/*<< The size of the free block. */
-#ifdef MEMLEAK_DEBUG
     const char *file;
     unsigned line;
-#endif
 } BlockLink_t;
 
 
@@ -183,11 +178,9 @@ static const uint32_t uxHeapStructSize	= ( ( sizeof ( BlockLink_t ) + ( portBYTE
 
 /* Create a couple of list links to mark the start and end of the list. */
 static BlockLink_t xStart, *pxEnd = NULL;
-#ifdef MEMLEAK_DEBUG
 //add by jjj, we Link the used blocks here
 static BlockLink_t yStart;
 static size_t yFreeBytesRemaining;
-#endif
 /* Keeps track of the number of free bytes remaining, but says nothing about
 fragmentation. */
 static size_t xFreeBytesRemaining = 0;
@@ -210,9 +203,7 @@ static HeapRegion_t xHeapRegions[] =
 };
 /*-----------------------------------------------------------*/
 
-#ifdef MEMLEAK_DEBUG
 static const char mem_debug_file[] ICACHE_RODATA_ATTR STORE_ATTR = "user_app";
-#endif
 
 /*-----------------------------------------------------------*/
 bool ICACHE_FLASH_ATTR __attribute__((weak))
@@ -220,7 +211,7 @@ check_memleak_debug_enable()
 {
     return 0;
 }
-#ifdef MEMLEAK_DEBUG 
+
 #include "spi_flash.h"
 extern SpiFlashChip *flashchip;
 //extern SpiFlashChip flashchip;
@@ -325,7 +316,7 @@ int prvRemoveBlockFromUsedList(BlockLink_t *pxBlockToRemove)
         yFreeBytesRemaining -= pxBlockToRemove->xBlockSize;
         return 0;
 }
-#endif
+
 size_t xPortWantedSizeAlign(size_t xWantedSize)
 {
 
@@ -334,11 +325,7 @@ size_t xPortWantedSizeAlign(size_t xWantedSize)
 
 void vPortDefineHeapRegions(const HeapRegion_t * const pxHeapRegions);
 
-#ifndef MEMLEAK_DEBUG
-void *pvPortMalloc( size_t xWantedSize )
-#else
 void *pvPortMalloc( size_t xWantedSize, const char * file, unsigned line, bool use_iram)
-#endif
 {
 BlockLink_t *pxBlock, *pxPreviousBlock, *pxNewBlockLink;
 void *pvReturn = NULL;
@@ -466,15 +453,13 @@ static bool is_inited = false;
 					by the application and has no "next" block. */
 					pxBlock->xBlockSize |= xBlockAllocatedBit;
 					pxBlock->pxNextFreeBlock = NULL;
-                    
-#ifdef MEMLEAK_DEBUG
+
 					if(uxHeapStructSize >= sizeof( BlockLink_t )){
 						pxBlock->file = file;
 						pxBlock->line = line;
 					}
 					//link the use block
 					prvInsertBlockIntoUsedList(pxBlock);
-#endif
 				}
 				else
 				{
@@ -514,11 +499,7 @@ static bool is_inited = false;
 }
 /*-----------------------------------------------------------*/
 
-#ifndef MEMLEAK_DEBUG
-void vPortFree( void *pv )
-#else
 void vPortFree(void *pv, const char * file, unsigned line)
-#endif
 {
 uint8_t *puc = ( uint8_t * ) pv;
 BlockLink_t *pxLink;
@@ -538,9 +519,7 @@ BlockLink_t *pxLink;
 
 		if( ( pxLink->xBlockSize & xBlockAllocatedBit ) != 0 )
 		{
-#ifndef MEMLEAK_DEBUG
-			if( pxLink->pxNextFreeBlock == NULL )
-#endif
+			if( /* pxLink->pxNextFreeBlock == NULL */ 1 )
 			{
 				/* The block is being returned to the heap - it is no longer
 				allocated. */
@@ -548,12 +527,10 @@ BlockLink_t *pxLink;
 
 				//vTaskSuspendAll();
 				ETS_INTR_LOCK();
-#ifdef MEMLEAK_DEBUG
 				if(prvRemoveBlockFromUsedList(pxLink) < 0){
 					ets_printf("%x already freed\n", pv);
 				}
 				else
-#endif
 				{
 					/* Add this block to the list of free blocks. */
 					xFreeBytesRemaining += pxLink->xBlockSize;
@@ -561,14 +538,12 @@ BlockLink_t *pxLink;
 					prvInsertBlockIntoFreeList( ( ( BlockLink_t * ) pxLink ) );
 				}
 				// ( void ) xTaskResumeAll();
-                ETS_INTR_UNLOCK();
+				ETS_INTR_UNLOCK();
 			}
-#ifndef MEMLEAK_DEBUG
 			else
 			{
 				mtCOVERAGE_TEST_MARKER();
 			}
-#endif
 		}
 		else
 		{
@@ -577,62 +552,6 @@ BlockLink_t *pxLink;
 	}
 }
 /*-----------------------------------------------------------*/
-
-#ifndef MEMLEAK_DEBUG
-void *malloc(size_t nbytes) __attribute__((alias("pvPortMalloc")));
-void free(void *ptr) __attribute__((alias("vPortFree")));
-
-/*-----------------------------------------------------------*/
-
-void *pvPortCalloc(size_t count, size_t size)
-{
-  void *p;
-
-  /* allocate 'count' objects of size 'size' */
-  p = pvPortMalloc(count * size);
-  if (p) {
-    /* zero the memory */
-    memset(p, 0, count * size);
-  }
-  return p;
-}
-
-void *calloc(size_t count, size_t nbytes) __attribute__((alias("pvPortCalloc")));
-
-/*-----------------------------------------------------------*/
-
-void *pvPortZalloc(size_t size)
-{
-     return pvPortCalloc(1, size);	
-}
-
-void *zalloc(size_t nbytes) __attribute__((alias("pvPortZalloc")));
-
-/*-----------------------------------------------------------*/
-
-void *pvPortRealloc(void *mem, size_t newsize)
-{
-    if (newsize == 0) {
-        vPortFree(mem);
-        return NULL;
-    }
-
-    void *p;
-    p = pvPortMalloc(newsize);
-    if (p) {
-        /* zero the memory */
-        if (mem != NULL) {
-            memcpy(p, mem, newsize);
-            vPortFree(mem);
-        }
-    }
-    return p;
-}
-
-void *realloc(void *ptr, size_t nbytes) __attribute__((alias("pvPortRealloc")));
-/*-----------------------------------------------------------*/
-
-#else
 
 /*-----------------------------------------------------------*/
 void *pvPortCalloc(size_t count, size_t size, const char * file, unsigned line)
@@ -711,7 +630,6 @@ void *calloc(size_t count, size_t nbytes) __attribute__((alias("zalloc1")));
 void *zalloc(size_t nbytes) __attribute__((alias("calloc1")));
 void *realloc(void *ptr, size_t nbytes) __attribute__((alias("realloc1")));
 */
-#endif
 
 size_t xPortGetFreeHeapSize( void )
 {
@@ -877,11 +795,9 @@ const HeapRegion_t *pxHeapRegion;
 
 	/* Work out the position of the top bit in a size_t variable. */
 	xBlockAllocatedBit = ( ( size_t ) 1 ) << ( ( sizeof( size_t ) * heapBITS_PER_BYTE ) - 1 );
-#ifdef MEMLEAK_DEBUG
 	//add by jjj
-    yStart.pxNextFreeBlock = NULL;
+	yStart.pxNextFreeBlock = NULL;
 	yStart.xBlockSize = ( size_t ) 0;
-    yFreeBytesRemaining = 0;
-#endif
+	yFreeBytesRemaining = 0;
 }
 
