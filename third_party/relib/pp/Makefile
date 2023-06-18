@@ -12,12 +12,11 @@
 #     a generated lib/image xxx.a ()
 #
 ifndef PDIR
+
 UP_EXTRACT_DIR = ..
-GEN_LIBS = librelib.a
-COMPONENTS_librelib = \
-	main/libmain.a \
-	net80211/libnet80211.a \
-	pp/libpp.a
+GEN_LIBS = libpp.a
+COMPONENTS_libmain =
+
 endif
 
 
@@ -29,19 +28,6 @@ endif
 #   for a subtree within the makefile rooted therein
 #
 #DEFINES +=
-#CCFLAGS +=
-CCFLAGS += -std=gnu11
-ifeq ($(LIBLWIP_VER), 2)
-DEFINES += -DLIBLWIP_VER=2
-DDEFINES += -DLIBLWIP_VER=2
-LWIP2_ROOT := $(PWD)/../lwip2
-export LWIP2_ROOT
-INCLUDES += -I $${LWIP2_ROOT}/include -I $${LWIP2_ROOT}/src/include
-else
-DEFINES += -DLIBLWIP_VER=1
-DDEFINES += -DLIBLWIP_VER=1
-endif
-
 
 #############################################################
 # Recursion Magic - Don't touch this!!
@@ -59,4 +45,3 @@ INCLUDES := $(INCLUDES) -I $(PDIR)include
 INCLUDES += -I ./
 PDIR := ../$(PDIR)
 sinclude $(PDIR)Makefile
-
