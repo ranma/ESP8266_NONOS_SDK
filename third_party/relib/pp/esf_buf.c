@@ -106,6 +106,9 @@ esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 			return NULL;
 		}
 		esf_buf_st *entry = esf_get_freelist_entry(&ebCtx.eb_tx_free_list);
+		if (entry == NULL) {
+			return NULL;
+		}
 
 		memset(entry->tx_desc,0,sizeof(*entry->tx_desc));
 		entry->tx_desc->flags = 0x2000;
@@ -123,6 +126,9 @@ esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 	}
 	else if (type == ESF_BUF_MGMT_SBUF) {
 		esf_buf_st *entry = esf_get_freelist_entry(&ebCtx.eb_mgmt_s_free_list);
+		if (entry == NULL) {
+			return NULL;
+		}
 		memset(entry->tx_desc,0,sizeof(*entry->tx_desc));
 		entry->tx_desc->flags = 0x8000;
 		entry->ds_head->buf = entry->buf_begin;
@@ -130,6 +136,9 @@ esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 	}
 	else if (type == ESF_BUF_BAR) {
 		esf_buf_st *entry = esf_get_freelist_entry(&ebCtx.eb_tx_bar_free_list);
+		if (entry == NULL) {
+			return NULL;
+		}
 		entry->tx_desc->flags = 0x200000;
 		return entry;
 	}
