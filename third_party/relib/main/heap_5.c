@@ -332,6 +332,8 @@ size_t xPortWantedSizeAlign(size_t xWantedSize)
 	return xWantedSize;
 }
 
+void vPortDefineHeapRegions(const HeapRegion_t * const pxHeapRegions);
+
 #ifndef MEMLEAK_DEBUG
 void *pvPortMalloc( size_t xWantedSize )
 #else
@@ -343,12 +345,11 @@ void *pvReturn = NULL;
 static bool is_inited = false;
 
     if (!is_inited) {
-        void vPortDefineHeapRegions( const HeapRegion_t * const pxHeapRegions );
         xHeapRegions[0].pucStartAddress = ( uint8_t * )&_heap_start;
-        xHeapRegions[0].xSizeInBytes = (( size_t)( 0x40000000 - (uint32)&_heap_start));
-        
+        xHeapRegions[0].xSizeInBytes = (( size_t)( 0x3fffc000 - (uint32)&_heap_start));
+
         xHeapRegions[1].pucStartAddress = ( uint8_t * )&_lit4_end;
-        xHeapRegions[1].xSizeInBytes = (( size_t)( 0x4010C000 - (uint32)&_lit4_end));
+        xHeapRegions[1].xSizeInBytes = (( size_t)( 0x40108000 - (uint32)&_lit4_end));
 
         is_inited = true;
         vPortDefineHeapRegions(xHeapRegions);
