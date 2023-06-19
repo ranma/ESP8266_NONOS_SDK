@@ -751,6 +751,7 @@ pbuf_free(struct pbuf *p)
       ) {
 #ifdef EBUF_LWIP
         system_pp_recycle_rx_pkt(p->eb);
+        p->eb = NULL;
 #endif //EBUF_LWIP
         memp_free(MEMP_PBUF, p);
       /* type == PBUF_RAM */

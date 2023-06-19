@@ -17,6 +17,12 @@
 
 #include "lwip/pbuf.h"
 
+#if LIBLWIP_VER == 2
+#define PB_TYPE(pb) (pb->type_internal)
+#else
+#define PB_TYPE(pb) (pb->type)
+#endif
+
 #define DEBUG 0
 
 /*
@@ -122,9 +128,12 @@ esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 			void *caller = __builtin_return_address(0);
 			/* Seeing some cases where pb->eb is an invalid
 			 * pointer when lwip1_pbuf_free is called */
-			os_printf("[@%p] esf_buf_alloc invalid pb->eb=%p\n",
-				caller, pb->eb);
-			pb->eb = NULL;
+			os_printf("[@%p] esf_buf_alloc unexpected pb->eb=%p != NULL, pb->type=%d\n",
+				caller, pb->eb, PB_TYPE(pb));
+			/* looks like this is happening in ieee80211_output_pbuf with type=PBUF_REF
+			 * and only hostap_deliver_data and ieee80211_deliver_data are
+			 * making a PBUF_REF alloc and setting pb->eb directly.
+			 */
 		}
 
 		uint8_t *buf = pb->payload;
