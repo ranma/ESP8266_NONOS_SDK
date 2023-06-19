@@ -1,6 +1,7 @@
 #ifndef LWIP2_ARCH_CC_H
 #define LWIP2_ARCH_CC_H
 
+#define MEM_DEFAULT_USE_DRAM 1
 #define MEMLEAK_DEBUG 1
 
 #include <stdint.h>
