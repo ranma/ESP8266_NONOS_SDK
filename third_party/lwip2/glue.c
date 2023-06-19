@@ -87,8 +87,15 @@ uint8_t ICACHE_FLASH_ATTR
 lwip1_pbuf_free(struct pbuf *p)
 {
 	if (p->eb) {
-		system_pp_recycle_rx_pkt(p->eb);
-		p->eb = NULL;
+		uint32_t addr = (uint32_t)p->eb;
+		if (addr < 0x3ffe8000 || addr >= 0x40000000) {
+			void *caller = __builtin_return_address(0);
+			os_printf("[@%p] lwip1_pbuf_free: p->eb out of bounds: p=%p eb=%p\n",
+				caller, p, p->eb);
+		} else {
+			system_pp_recycle_rx_pkt(p->eb);
+			p->eb = NULL;
+		}
 	}
 	return pbuf_free(p);
 }

@@ -114,8 +114,17 @@ esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 		entry->tx_desc->flags = 0x2000;
 
 		entry->pbuf = pb;
+		/* Not sure why this is conditional */
 		if (pbuf_is_ram_type(pb)) {
 			pb->eb = entry;
+		} else if (pb->eb != NULL) {
+			/* lwip1_pbuf_alloc is setting pb->eb to NULL */
+			void *caller = __builtin_return_address(0);
+			/* Seeing some cases where pb->eb is an invalid
+			 * pointer when lwip1_pbuf_free is called */
+			os_printf("[@%p] esf_buf_alloc invalid pb->eb=%p\n",
+				caller, pb->eb);
+			pb->eb = NULL;
 		}
 
 		uint8_t *buf = pb->payload;
