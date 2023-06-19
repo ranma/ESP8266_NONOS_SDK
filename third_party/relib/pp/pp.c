@@ -4,9 +4,12 @@
 #include <stdint.h>
 #include "c_types.h"
 #include "mem.h"
+#include "ets_sys.h"
 
 #include "relib/esp8266.h"
 #include "relib/xtensa.h"
+
+#include "relib/ets_rom.h"
 
 #include "lwip/pbuf.h"
 
@@ -21,7 +24,23 @@ extern uint8_t dbg_stop_sw_wdt;
 extern uint8_t dbg_stop_hw_wdt;
 extern uint8_t pp_soft_wdt_count;
 
-extern uint8_t *pp_sig_cnt;
+enum pptask_sig {
+	PPTASK_SIG_TXQ0 = 0,
+	PPTASK_SIG_TXQ1 = 1,
+	PPTASK_SIG_TXQ2 = 2,
+	PPTASK_SIG_TXQ3 = 3,
+	PPTASK_SIG_TXDONE = 4,
+	PPTASK_SIG_RX =  5,
+	PPTASK_SIG_PROCESS_WQ = 8,
+	PPTASK_SIG_RX_PKT_HDR = 9,
+	PPTASK_SIG_ENABLE_GPIO_WAKEUP = 10,
+	PPTASK_SIG_FEED_WDT = 12,
+	PPTASK_SIG_WPS_START = 13,
+	PPTASK_SIG_TXTIMEOUT = 14,
+	PPTASK_SIG_NUM  = 15,
+};
+
+extern uint8_t pp_sig_cnt[PPTASK_SIG_NUM];
 
 int ppProcessTxQ(uint8_t ac);
 void ppProcTxDone(bool post);
@@ -35,93 +54,62 @@ void lmacProcessTxTimeout(void);
 void ICACHE_FLASH_ATTR
 relib_pptask(ETSEvent *e)
 {
-	ETSSignal sig;
-	uint32_t saved;
+	if (e->sig >= PPTASK_SIG_NUM) {
+		ets_printf("pptask sig >15: %d!\n", e->sig);
+		return;
+	}
+	enum pptask_sig sig = e->sig;
 
-	if (FeedWdtFlag == '\x01') {
-		saved = LOCK_IRQ_SAVE();
-		if (dbg_stop_sw_wdt == '\0') {
-			pp_soft_wdt_count = '\0';
+	uint32_t saved = LOCK_IRQ_SAVE();
+	pp_sig_cnt[sig]--;
+	LOCK_IRQ_RESTORE(saved);
+
+	if (FeedWdtFlag) {
+		if (dbg_stop_sw_wdt == 0) {
+			pp_soft_wdt_count = 0;
 		}
-		if (dbg_stop_hw_wdt == '\0') {
+		if (dbg_stop_hw_wdt == 0) {
 			WDT->RST = 0x73;
 		}
-		FeedWdtFlag = '\0';
-		LOCK_IRQ_RESTORE(saved);
+		FeedWdtFlag = 0;
 	}
-	sig = e->sig;
+
 	switch(sig) {
-	case 0:
-	case 1:
-	case 2:
-	case 3:
-		pp_sig_cnt[sig] = pp_sig_cnt[sig] + 0xff;
-		ppProcessTxQ((uint8_t)sig);
+	case PPTASK_SIG_TXQ0:
+	case PPTASK_SIG_TXQ1:
+	case PPTASK_SIG_TXQ2:
+	case PPTASK_SIG_TXQ3:
+		ppProcessTxQ(sig);
 		break;
-	case 4:
-		saved = LOCK_IRQ_SAVE();
-		pp_sig_cnt[e->sig] = pp_sig_cnt[e->sig] + 0xff;
-		LOCK_IRQ_RESTORE(saved);
+	case PPTASK_SIG_TXDONE:
 		ppProcTxDone(true);
 		break;
-	case 5:
-		saved = LOCK_IRQ_SAVE();
-		pp_sig_cnt[e->sig] = pp_sig_cnt[e->sig] + 0xff;
-		LOCK_IRQ_RESTORE(saved);
+	case PPTASK_SIG_RX:
 		ppRxPkt();
 		break;
-	case 6:
-		break;
-	case 7:
-		break;
-	case 8:
-		pp_sig_cnt[sig] = pp_sig_cnt[sig] + 0xff;
+	case PPTASK_SIG_PROCESS_WQ:
 		ppProcessWaitingQueue();
 		break;
-	case 9:
+	case PPTASK_SIG_RX_PKT_HDR:
 		ppPeocessRxPktHdr((sniffer_buf *)e->par);
 		break;
-	case 10:
-		saved = LOCK_IRQ_SAVE();
-		pp_sig_cnt[e->sig] = pp_sig_cnt[e->sig] + 0xff;
-		LOCK_IRQ_RESTORE(saved);
+	case PPTASK_SIG_ENABLE_GPIO_WAKEUP:
 		pm_enable_gpio_wakeup();
 		break;
-	case 0xb:
-		saved = LOCK_IRQ_SAVE();
-		pp_sig_cnt[e->sig] = pp_sig_cnt[e->sig] + 0xff;
-		LOCK_IRQ_RESTORE(saved);
+	case PPTASK_SIG_FEED_WDT:  /* feed wdt, no-op since it got fed above  */
 		break;
-	case 0xc:
-		saved = LOCK_IRQ_SAVE();
-		pp_sig_cnt[e->sig] = pp_sig_cnt[e->sig] + 0xff;
-		/* sic: This got cleared before the switch, unreachable code? */
-		if (FeedWdtFlag == '\x01') {
-			if (dbg_stop_sw_wdt == '\0') {
-				pp_soft_wdt_count = '\0';
-			}
-			if (dbg_stop_hw_wdt == '\0') {
-				WDT->RST = 0x73;
-			}
-			FeedWdtFlag = '\0';
-		}
-		LOCK_IRQ_RESTORE(saved);
-		break;
-	case 0xd:  /* TODO: WPS-related, not using this right now */
-		saved = LOCK_IRQ_SAVE();
-		pp_sig_cnt[e->sig] = pp_sig_cnt[e->sig] + 0xff;
-		LOCK_IRQ_RESTORE(saved);
+	case PPTASK_SIG_WPS_START:  /* TODO: WPS-related, not using this right now */
 #if 0
 		if ((g_ic.ic_wps != NULL && ((g_ic.ic_wps)->wifi_station_wps_start != NULL)) {
 			(*(g_ic.ic_wps)->wifi_station_wps_start)();
 		}
 #endif
 		break;
-	case 0xe:
-		saved = LOCK_IRQ_SAVE();
-		pp_sig_cnt[e->sig] = pp_sig_cnt[e->sig] + 0xff;
-		LOCK_IRQ_RESTORE(saved);
+	case PPTASK_SIG_TXTIMEOUT:
 		lmacProcessTxTimeout();
+		break;
+	default:
+		ets_printf("unhandled pptask sig: %d\n", sig);
 		break;
 	}
 }
