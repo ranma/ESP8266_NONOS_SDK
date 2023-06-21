@@ -8,6 +8,7 @@
 #include "mem.h"
 #include "lwip/pbuf.h"
 #include "lwip/netif.h"
+#include "relib/relib.h"
 #include "relib/ets_rom.h"
 #include "relib/s/esf_buf.h"
 #include "relib/s/ieee80211_conn.h"

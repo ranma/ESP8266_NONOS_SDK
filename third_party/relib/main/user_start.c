@@ -17,6 +17,8 @@
 #include "relib/hooks.h"
 #include "relib/efuse_register.h"
 #include "relib/s/ieee80211_conn.h"
+#include "relib/s/ieee80211com.h"
+#include "relib/s/wl_profile.h"
 
 #define BOOT_CLK_FREQ   52000000
 #define NORMAL_CLK_FREQ 80000000
@@ -50,75 +52,6 @@ typedef struct { // Sector flash addr flashchip->chip_size-0x1000
 	uint32_t magic2;    /* 0xAA55AA55 to mark the struct as valid (ensure all bytes of the struct were written to flash) */
 } wifi_flash_header_st;
 static_assert(sizeof(wifi_flash_header_st) == 0x20, "wifi_flash_header size mismatch");
-
-typedef struct __attribute__((packed)) {
-	union {
-		struct boot_hdr_2 {
-			char use_bin:4;
-			char flag:4;
-			uint8_t version;
-			uint8_t pad[6];
-		} boot_2;
-		struct boot_hdr {
-			char use_bin:2;
-			char boot_status:1;
-			char to_qio:1;
-			char reverse:4;
-
-			char version:5;
-			char test_pass_flag:1;
-			char test_start_flag:1;
-			char enhance_boot_flag:1;
-
-			char test_bin_addr[3];
-			char user_bin_addr[3];
-		} boot;
-	};
-} boot_hdr_param_st;
-static_assert(sizeof(boot_hdr_param_st) == 8, "boot_hdr_param size mismatch");
-
-typedef struct __attribute__((packed)) {
-	/* shallow struct def to avoid pulling in all the other struct members */
-	union {
-		uint8_t pad1[0x4a4];
-		struct {
-			boot_hdr_param_st boot_hdr_param;
-			uint8_t opmode;
-		};
-		struct {
-			uint8_t pad2[1170];
-			uint8_t mac_bakup[6];
-		};
-	};
-} wl_profile_st;
-static_assert(sizeof(wl_profile_st) == 0x4a4, "wl_profile size mismatch");
-static_assert(OFFSET_OF(wl_profile_st, opmode) == 8, "opmode offset mismatch");
-static_assert(OFFSET_OF(wl_profile_st, mac_bakup) == 1170, "mac_bakup offset mismatch");
-
-typedef struct __attribute__((packed)) {
-	/* shallow struct def to avoid pulling in all the other struct members */
-	union {
-		uint8_t pad1[0x6b4];
-		struct {
-			uint8_t pad2[0x20c];
-			wl_profile_st ic_profile;
-		};
-		struct {
-			uint8_t pad3[478];
-			uint8_t ic_mode;
-			uint8_t phy_function;
-		};
-		struct {
-			uint8_t pad4[16];
-			ieee80211_conn_st *ic_if0_conn;
-			ieee80211_conn_st *ic_if1_conn;
-		};
-	};
-} ieee80211com_st;
-static_assert(sizeof(ieee80211com_st) == 0x6b4, "ieee80211com size mismatch");
-static_assert(OFFSET_OF(ieee80211com_st, ic_mode) == 478, "ic_mode offset mismatch");
-static_assert(OFFSET_OF(ieee80211com_st, phy_function) == 479, "phy_function offset mismatch");
-static_assert(OFFSET_OF(ieee80211com_st, ic_profile) == 0x20c, "ic_profile offset mismatch");
 
 typedef struct __attribute__((packed)) {
 	uint32_t addr;

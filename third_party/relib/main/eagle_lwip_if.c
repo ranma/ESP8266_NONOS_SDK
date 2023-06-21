@@ -11,6 +11,10 @@
 #include "lwip/netif.h"
 #include "lwip/pbuf.h"
 
+#include "relib/relib.h"
+#include "relib/s/ieee80211_conn.h"
+#include "relib/s/ieee80211com.h"
+
 #if LIBLWIP_VER == 2
 struct ip_addr {
 	ip4_addr_t addr;
@@ -47,30 +51,6 @@ enum dhcp_status {
 };
 
 typedef struct ip_info ip_info_st;
-
-typedef enum ieee80211_opmode {
-	IEEE80211_M_STA=0,
-	IEEE80211_M_HOSTAP=1
-} ieee80211_opmode;
-
-typedef struct {
-	struct netif *ni_ifp;
-	uint8_t pad1[200 - 4];
-	enum ieee80211_opmode opmode; /* member at offset 200 */
-	/* additional members not used in this file */
-} ieee80211_conn_st;
-
-static_assert(OFFSET_OF(ieee80211_conn_st, opmode) == 200, "opmode offset mismatch");
-
-typedef struct {
-	/* shallow struct def to avoid pulling in all the other struct members */
-	struct {
-		uint8_t pad4[16];
-		ieee80211_conn_st* ic_ifx_conn[2];
-	};
-} ieee80211com_st;
-
-static_assert(OFFSET_OF(ieee80211com_st, ic_ifx_conn) == 16, "ic_ifx_conn offset mismatch");
 
 err_t etharp_output(struct netif *netif, struct pbuf *q, IP_ADDR_T *ipaddr); /* netif_output_fn */
 err_t ethernet_input(struct pbuf *p, struct netif *netif);
