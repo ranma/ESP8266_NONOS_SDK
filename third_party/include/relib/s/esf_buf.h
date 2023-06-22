@@ -1,6 +1,8 @@
 #ifndef RELIB_ESF_BUF_H
 #define RELIB_ESF_BUF_H
 
+#include "relib/queue.h"
+
 struct esf_rx_desc;
 struct esf_tx_desc;
 struct lldesc;
@@ -18,10 +20,8 @@ struct esf_buf {
 	int16_t chl_freq_offset;
 	struct target_rc *trc;
 	union {
-		struct {
-			struct esf_buf *stqe_next;
-		} bqentry;
-		struct esf_buf *stqe_next;
+		STAILQ_ENTRY(esf_buf) bqentry;
+		STAILQ_ENTRY(esf_buf);
 	};
 	union {
 		union {
