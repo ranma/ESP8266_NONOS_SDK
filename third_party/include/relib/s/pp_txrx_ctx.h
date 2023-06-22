@@ -4,9 +4,9 @@
 #include "relib/queue.h"
 #include "relib/s/pp_txq.h"
 
-typedef void (*pp_tx_cb_t)(void);
-
 struct esf_buf;
+
+typedef void (*pp_tx_cb_t)(struct esf_buf *eb);
 
 struct pp_txrx_ctx {
 	uint32_t queue_enable_mask;

@@ -153,7 +153,7 @@ LAB_40236d36:
 				bVar5 * ((bVar11 >> 1 & 1) == 0) + !bVar5 * ((bVar11 >> 3 & 1) == 0)));
 			if ((int)uVar12 < 0) break;
 			if ((pTxRx->txCBmap >> (uVar12 & 0x1f) & 1) != 0) {
-				pTxRx->txCBTab[uVar12]();
+				pTxRx->txCBTab[uVar12](eb);
 			}
 			uVar14 = uVar14 & (1 << 0x20 - (0x20 - (uVar12 & 0x1f)) ^ 0xffffffffU);
 		}
