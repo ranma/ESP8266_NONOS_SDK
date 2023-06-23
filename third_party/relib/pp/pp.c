@@ -93,6 +93,27 @@ void ppPeocessRxPktHdr(sniffer_buf *sniffer);
 void pm_enable_gpio_wakeup(void);
 void lmacProcessTxTimeout(void);
 
+esf_buf_st* ICACHE_FLASH_ATTR
+ppDequeueTxDone_Locked(void)
+{
+	esf_buf_st *next;
+	esf_buf_st *head;
+
+	uint32_t saved = LOCK_IRQ_SAVE();
+	head = (pTxRx->done_txq).stqh_first;
+	if (head != NULL) {
+		next = (head->bqentry).stqe_next;
+		(pTxRx->done_txq).stqh_first = next;
+		if (next == NULL) {
+			(pTxRx->done_txq).stqh_last = &(pTxRx->done_txq).stqh_first;
+		}
+		(head->bqentry).stqe_next = NULL;
+	}
+	LOCK_IRQ_RESTORE(saved);
+	return head;
+}
+
+
 void ICACHE_FLASH_ATTR
 ppProcTxDone(bool post)
 {
