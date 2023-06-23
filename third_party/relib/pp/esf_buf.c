@@ -117,7 +117,7 @@ esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 		}
 
 		memset(entry->tx_desc,0,sizeof(*entry->tx_desc));
-		entry->tx_desc->flags = 0x2000;
+		entry->tx_desc->flags = ESF_TX_FLAG_BUF_TX_PB;
 
 		entry->pbuf = pb;
 		/* Not sure why this is conditional */
@@ -148,7 +148,7 @@ esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 			return NULL;
 		}
 		memset(entry->tx_desc,0,sizeof(*entry->tx_desc));
-		entry->tx_desc->flags = 0x8000;
+		entry->tx_desc->flags = ESF_TX_FLAG_BUF_MGMT_SBUF;
 		entry->ds_head->buf = entry->buf_begin;
 		return entry;
 	}
@@ -157,7 +157,7 @@ esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 		if (entry == NULL) {
 			return NULL;
 		}
-		entry->tx_desc->flags = 0x200000;
+		entry->tx_desc->flags = ESF_TX_FLAG_BUF_BAR;
 		return entry;
 	}
 	else if (type == ESF_BUF_MGMT_LBUF || type == ESF_BUF_MGMT_LLBUF) {
@@ -175,9 +175,9 @@ esf_buf_alloc(struct pbuf *pb, esf_buf_type_t type, uint32_t len)
 		eb->ds_len = 1;
 		eb->tx_desc = &holder->tx_desc;
 		if (type == ESF_BUF_MGMT_LBUF) {
-			eb->tx_desc->flags = 0x4000;
+			eb->tx_desc->flags = ESF_TX_FLAG_BUF_MGMT_LBUF;
 		} else {
-			eb->tx_desc->flags = 0x1000000;
+			eb->tx_desc->flags = ESF_TX_FLAG_BUF_MGMT_LLBUF;
 		}
 		eb->buf_begin = holder->buf;
 		eb->ds_head->buf = holder->buf;

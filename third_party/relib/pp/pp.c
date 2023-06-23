@@ -163,7 +163,7 @@ LAB_40236d36:
 		if ((txd_flags & (1 << 3)) && (!txd->p2p) && txd->status == 1) {
 			active_flag = true;
 		}
-		if (txd_flags & (1 << 0xd)) {
+		if (txd_flags & ESF_TX_FLAG_BUF_TX_PB) {
 			struct pbuf *pb = (struct pbuf *)eb->pbuf;
 			if (pbuf_is_ram_type(pb)) {
 				pb->eb = NULL;
@@ -173,15 +173,15 @@ LAB_40236d36:
 			txd_flags = *(uint32_t *)(eb->desc).tx_desc >> 6;
 			break;
 		}
-		if (txd_flags & (1 << 0xe)) {
+		if (txd_flags & ESF_TX_FLAG_BUF_MGMT_LBUF) {
 			buf_type = ESF_BUF_MGMT_LBUF;
 			break;
 		}
-		if (txd_flags & (1 << 0x18)) {
+		if (txd_flags & ESF_TX_FLAG_BUF_MGMT_LLBUF) {
 			buf_type = ESF_BUF_MGMT_LLBUF;
 			break;
 		}
-		if (txd_flags & (1 << 0xf)) {
+		if (txd_flags & ESF_TX_FLAG_BUF_MGMT_SBUF) {
 			buf_type = ESF_BUF_MGMT_SBUF;
 			break;
 		}

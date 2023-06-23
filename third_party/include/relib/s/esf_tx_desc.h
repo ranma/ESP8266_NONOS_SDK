@@ -1,6 +1,12 @@
 #ifndef RELIB_ESF_TX_DESC_H
 #define RELIB_ESF_TX_DESC_H
 
+#define ESF_TX_FLAG_BUF_TX_PB      (1 << 13)
+#define ESF_TX_FLAG_BUF_MGMT_LBUF  (1 << 14)
+#define ESF_TX_FLAG_BUF_MGMT_SBUF  (1 << 15)
+#define ESF_TX_FLAG_BUF_BAR        (1 << 21)
+#define ESF_TX_FLAG_BUF_MGMT_LLBUF (1 << 24)
+
 struct esf_rc_sched;
 
 struct esf_tx_desc {
