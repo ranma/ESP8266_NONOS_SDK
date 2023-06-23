@@ -96,119 +96,104 @@ void lmacProcessTxTimeout(void);
 void ICACHE_FLASH_ATTR
 ppProcTxDone(bool post)
 {
-	bool bVar1;
-	char cVar2;
-	bool bVar3;
-	bool bVar4;
-	bool bVar5;
-	bool bVar6;
+	bool active_flag;
 	esf_buf_st *eb;
-	struct pbuf *ppVar7;
-	ETS_STATUS EVar8;
-	lldesc_st *plVar9;
-	esf_tx_desc_st *peVar10;
-	uint8_t bVar11;
-	uint32_t uVar12;
-	int16_t sVar13;
-	uint32_t uVar14;
-	esf_buf_type_t eStack_4;
+	lldesc_st *lld;
+	esf_tx_desc_st *txd;
+	uint32_t txd_flags;
+	esf_buf_type_t buf_type;
 
-	bVar6 = false;
-	eStack_4 = 0;
+	active_flag = false;
+	buf_type = 0;
 LAB_40236d36:
 	do {
 		eb = ppDequeueTxDone_Locked();
 		if (eb == NULL) {
-			if (bVar6) {
+			if (active_flag) {
 				pm_incr_active_cnt();
 			}
 			pp_disable_idle_timer();
-			EVar8 = ppCheckTxIdle(true);
-			if (((EVar8 == ETS_OK) && (bVar6 = pm_is_waked(), bVar6)) &&
-				 (bVar6 = pm_scan_unlocked(), bVar6)) {
+			ETS_STATUS st = ppCheckTxIdle(true);
+			if (st == ETS_OK && pm_is_waked() && pm_scan_unlocked()) {
 				idle_timer_enabled = true;
 				ets_timer_arm_new(&mac_idle_timer,sleep_start_wait_time,false,true);
 			}
-			if ((g_ic.ic_flags >> 0xe & 1) != 0) {
+			if (g_ic.ic_flags & (1 << 14)) {
 				scan_connect_state(g_ic.scaner);
 			}
 			return;
 		}
-		// uVar14 = *(uint32_t *)&((eb->desc).tx_desc)->field_0x10;
-		uVar14 = eb->tx_desc->comp_cb_map;
-		while( true ) {
-			uVar12 = -uVar14 & uVar14;
-			sVar13 = (int16_t)(uVar12 >> 0x10);
-			bVar1 = sVar13 == 0;
-			sVar13 = (uint16_t)bVar1 * (int16_t)uVar12 + (uint16_t)!bVar1 * sVar13;
-			cVar2 = (char)((uint16_t)sVar13 >> 8);
-			bVar3 = cVar2 == '\0';
-			bVar11 = bVar3 * (char)sVar13 + !bVar3 * cVar2;
-			bVar4 = bVar11 >> 4 == 0;
-			bVar11 = bVar4 * (bVar11 & 0xf) + !bVar4 * (bVar11 >> 4);
-			bVar5 = (bVar11 >> 2 & 3) == 0;
-			uVar12 = 0x1f - (uint8_t)((uVar12 == 0) * ' ' +
-				(uVar12 != 0) *
-				(bVar1 << 4 | bVar3 << 3 | bVar4 << 2 | bVar5 << 1 |
-				bVar5 * ((bVar11 >> 1 & 1) == 0) + !bVar5 * ((bVar11 >> 3 & 1) == 0)));
-			if ((int)uVar12 < 0) break;
-			if ((pTxRx->txCBmap >> (uVar12 & 0x1f) & 1) != 0) {
-				pTxRx->txCBTab[uVar12](eb);
+		uint32_t cb_map = eb->tx_desc->comp_cb_map;
+		while(cb_map) {
+			/* get mask of lowest set bit */
+			uint32_t lowest_set = -cb_map & cb_map;
+			/* double-check callback entry is present */
+			if (pTxRx->txCBmap & lowest_set) {
+				/* get the bit index.
+				 * because we know only a single bit
+				 * is set, 31 - __builtin_clz is slightly faster than
+				 * __builtin_ctz since it maps better to NSAU
+				 */
+				int bit = 31 - __builtin_clz(lowest_set);
+				/* run the callback handler if non-null */
+				if (pTxRx->txCBTab[bit] != NULL) {
+					pTxRx->txCBTab[bit](eb);
+				} else {
+					ets_printf("txCBTab[%d] NULL: %08x %08x\n",
+						bit, cb_map, lowest_set);
+				}
 			}
-			uVar14 = uVar14 & (1 << 0x20 - (0x20 - (uVar12 & 0x1f)) ^ 0xffffffffU);
+			cb_map ^= lowest_set;
 		}
-		bVar11 = 5;
-		peVar10 = (eb->desc).tx_desc;
-		uVar12 = *(uint32_t *)peVar10;
-		uVar14 = uVar12 >> 6;
-		if ((uVar12 >> 0x1c & 1) == 0) {
-			static uint8_t need_pwctrl;
-			need_pwctrl += peVar10->rrc; /*((uint8_t)peVar10->field_0x4 >> 4) */
-			if (g_ic.ic_mode == '\x02') {
-				bVar11 = 1;
+		int pwctrl_thres = 5;
+		txd = eb->tx_desc;
+		txd_flags = txd->flags;
+		if ((txd_flags & (1 << 0x1c)) == 0) {
+			static uint8_t need_pwctrl = 0;
+			need_pwctrl += txd->rrc; /*((uint8_t)txd->field_0x4 >> 4) */
+			if (g_ic.ic_mode == 2) {
+				pwctrl_thres = 1;
 			}
-			if (bVar11 <= need_pwctrl) {
+			if (pwctrl_thres <= need_pwctrl) {
 				need_pwctrl = 0;
 				tx_pwctrl_background(1,0);
-				peVar10 = (eb->desc).tx_desc;
-				uVar12 = *(uint32_t *)peVar10;
-				uVar14 = uVar12 >> 6;
+				txd = (eb->desc).tx_desc;
 			}
 		}
-		if ((((uVar14 >> 3 & 1) != 0) && ((uVar12 >> 1 & 1) == 0)) && (peVar10->status == '\x01')) {
-			bVar6 = true;
+		if ((txd_flags & (1 << 3)) && (!txd->p2p) && txd->status == 1) {
+			active_flag = true;
 		}
-		if ((uVar14 >> 0xd & 1) != 0) {
-			ppVar7 = (struct pbuf *)eb->pbuf;
-			if (pbuf_is_ram_type(ppVar7)) {
-				ppVar7->eb = NULL;
+		if (txd_flags & (1 << 0xd)) {
+			struct pbuf *pb = (struct pbuf *)eb->pbuf;
+			if (pbuf_is_ram_type(pb)) {
+				pb->eb = NULL;
 			}
-			pbuf_free(ppVar7);
-			eStack_4 = ESF_BUF_TX_PB;
-			uVar14 = *(uint32_t *)(eb->desc).tx_desc >> 6;
+			pbuf_free(pb);
+			buf_type = ESF_BUF_TX_PB;
+			txd_flags = *(uint32_t *)(eb->desc).tx_desc >> 6;
 			break;
 		}
-		if ((uVar14 >> 0xe & 1) != 0) {
-			eStack_4 = ESF_BUF_MGMT_LBUF;
+		if (txd_flags & (1 << 0xe)) {
+			buf_type = ESF_BUF_MGMT_LBUF;
 			break;
 		}
-		if ((uVar14 >> 0x18 & 1) != 0) {
-			eStack_4 = ESF_BUF_MGMT_LLBUF;
+		if (txd_flags & (1 << 0x18)) {
+			buf_type = ESF_BUF_MGMT_LLBUF;
 			break;
 		}
-		if ((uVar14 >> 0xf & 1) != 0) {
-			eStack_4 = ESF_BUF_MGMT_SBUF;
+		if (txd_flags & (1 << 0xf)) {
+			buf_type = ESF_BUF_MGMT_SBUF;
 			break;
 		}
-	} while ((uVar14 >> 0x15 & 1) != 0);
-	if ((uVar14 >> 0x17 & 1) != 0) {
-		eb->data_len = eb->data_len - 4;
-		plVar9 = eb->ds_tail;
-		*(uint32_t *)plVar9 = *(uint32_t *)plVar9 & 0xff000fff | (((*(uint32_t *)plVar9 & 0xffffff) >> 0xc) - 4 & 0xfff) << 0xc;
-		if (PendFreeBcnEb == '\0') goto LAB_40236d36;
-		PendFreeBcnEb = '\0';
+	} while (txd_flags & (1 << 0x15));
+	if (txd_flags & (1 << 0x17)) {
+		eb->data_len -= 4;
+		lld = eb->ds_tail;
+		lld->length -= 4;
+		if (PendFreeBcnEb == 0) goto LAB_40236d36;
+		PendFreeBcnEb = 0;
 	}
-	esf_buf_recycle(eb,eStack_4);
+	esf_buf_recycle(eb,buf_type);
 	goto LAB_40236d36;
 }
 
