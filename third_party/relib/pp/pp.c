@@ -6,6 +6,7 @@
 #include "mem.h"
 #include "ets_sys.h"
 
+#include "relib/relib.h"
 #include "relib/esp8266.h"
 #include "relib/xtensa.h"
 #include "relib/s/lldesc.h"
@@ -37,6 +38,9 @@ pbuf_is_ram_type(struct pbuf *p)
 #define idle_timer_enabled idle_timer_enabled_124
 #define mac_idle_timer mac_idle_timer_125
 #define pTxRx pTxRx_150
+#define ppTaskQ ppTaskQ_265
+#define PeriodCalInterval PeriodCalInterval_116
+#define noise_test_timer noise_test_timer_105
 
 extern uint8_t FeedWdtFlag;
 extern uint8_t dbg_stop_sw_wdt;
@@ -44,10 +48,14 @@ extern uint8_t dbg_stop_hw_wdt;
 extern uint8_t pp_soft_wdt_count;
 extern bool idle_timer_enabled;
 extern ETSTimer mac_idle_timer;
+extern ETSTimer noise_test_timer;
 extern int sleep_start_wait_time;
 extern ieee80211com_st g_ic; /* defined in ieee80211.c */
 extern char PendFreeBcnEb;
 extern pp_txrx_ctx_st *pTxRx;
+extern ETSEvent ppTaskQ[0x22];
+extern int PeriodCalInterval;
+extern uint8_t tx_data3[4];
 
 enum pptask_sig {
 	PPTASK_SIG_TXQ0 = 0,
@@ -280,6 +288,49 @@ relib_pptask(ETSEvent *e)
 		ets_printf("unhandled pptask sig: %d\n", sig);
 		break;
 	}
+}
+
+void esf_buf_setup(void);
+void pp_tx_idle_timeout(void *unused_arg);
+void pp_noise_test(void *unused_arg);
+void pp_enable_noise_timer(void);
+
+void ICACHE_FLASH_ATTR
+relib_pp_attach(void)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(pTxRx->txq); i++) {
+		pTxRx->txq[i].queue.stqh_first = NULL;
+		pTxRx->txq[i].queue.stqh_last = &pTxRx->txq[i].queue.stqh_first;
+		pTxRx->txq[i].nonqos = false;
+	}
+	for (i = 0; i < 2; i++) {
+		pTxRx->txq[i].nonqos = true;
+		pTxRx->txq[i].tid = 10;
+	};
+	pTxRx->queue_enable_mask = 0;
+	for (i = 0; i < ARRAY_SIZE(pTxRx->queue_enable_ac_mask); i++) {
+		pTxRx->queue_enable_ac_mask[i] = 0;
+		pTxRx->queue_select[i] = ((i * 6) >> 2) + 2;
+	}
+	for (i = 0; i < ARRAY_SIZE(pTxRx->wait_txq); i++) {
+		pTxRx->wait_txq[i].stqh_first = NULL;
+		pTxRx->wait_txq[i].stqh_last = &pTxRx->wait_txq[i].stqh_first;
+	}
+	pTxRx->rxq.stqh_first = NULL;
+	pTxRx->rxq.stqh_last = &(pTxRx->rxq).stqh_first;
+	(pTxRx->done_txq).stqh_first = NULL;
+	(pTxRx->done_txq).stqh_last = &(pTxRx->done_txq).stqh_first;
+	RTCMEM->SYSTEM[0xf8/4] = 0xa02; /* _DAT_600011f8 */
+	esf_buf_setup();
+	ets_task(relib_pptask, PRIO_PP, ppTaskQ, ARRAY_SIZE(ppTaskQ));
+	ets_timer_setfn(&mac_idle_timer,pp_tx_idle_timeout,NULL);
+	PeriodCalInterval = 600000;
+	if (tx_data3[2] != 0) {
+		PeriodCalInterval = tx_data3[2] * 10000;
+	}
+	ets_timer_setfn(&noise_test_timer,pp_noise_test,NULL);
+	pp_enable_noise_timer();
 }
 
 /*

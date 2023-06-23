@@ -533,6 +533,8 @@ void phy_enable_agc(void);
 void cnx_attach(ieee80211com_st *ic);
 void wDevEnableRx(void);
 
+void relib_pp_attach(void);
+
 void ICACHE_FLASH_ATTR
 chip_init(phy_init_and_rf_cal_st *param_1, uint8_t *macaddr)
 {
@@ -551,7 +553,7 @@ chip_init(phy_init_and_rf_cal_st *param_1, uint8_t *macaddr)
 	ieee80211_phy_init(g_ic.ic_profile.phyMode);
 	lmacInit();
 	wDev_Initialize();
-	pp_attach();
+	relib_pp_attach();
 	ieee80211_ifattach(&g_ic, macaddr);
 	_xtos_set_interrupt_handler_arg(0, wDev_ProcessFiq, NULL);
 	_xtos_ints_on(1);
