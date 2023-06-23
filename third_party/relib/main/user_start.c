@@ -519,6 +519,50 @@ relib_read_macaddr_from_otp(uint8_t *mac) /* impl. from RTOS SDK */
 	return 0;
 }
 
+int register_chipv6_phy(void);
+void phy_disable_agc(void);
+void ieee80211_phy_init(ieee80211_phymode_t phyMode);
+void lmacInit(void);
+void wDev_Initialize(void);
+void pp_attach(void);
+void ieee80211_ifattach(ieee80211com_st *ic, uint8_t *macaddr);
+void wDev_ProcessFiq(void *unused_arg);
+void pm_attach(void);
+void fpm_attach(void);
+void phy_enable_agc(void);
+void cnx_attach(ieee80211com_st *ic);
+void wDevEnableRx(void);
+
+void ICACHE_FLASH_ATTR
+chip_init(phy_init_and_rf_cal_st *param_1, uint8_t *macaddr)
+{
+	DPRINTF("chip_init\n");
+	if (register_chipv6_phy() != 0) {
+		os_printf_plus("%s %u\n", "mai", 0x130);
+		while (1);
+	}
+#if 0
+	uart_div_modify(0, NORMAL_CLK_FREQ / UART_BAUDRATE);
+	uart_div_modify(1, NORMAL_CLK_FREQ / UART_BAUDRATE);
+#else
+	relib_reset_uart_baud(NORMAL_CLK_FREQ);
+#endif
+	phy_disable_agc();
+	ieee80211_phy_init(g_ic.ic_profile.phyMode);
+	lmacInit();
+	wDev_Initialize();
+	pp_attach();
+	ieee80211_ifattach(&g_ic, macaddr);
+	_xtos_set_interrupt_handler_arg(0, wDev_ProcessFiq, NULL);
+	_xtos_ints_on(1);
+	pm_attach();
+	fpm_attach();
+	phy_enable_agc();
+	cnx_attach(&g_ic);
+	wDevEnableRx();
+}
+
+
 #if 1
 void ICACHE_FLASH_ATTR
 relib_user_local_init(void)
@@ -730,9 +774,7 @@ LAB_4022f98c:
 			}
 			phy_rf_data->pad1[0x70] = cVar8;
 		}
-		DPRINTF("chip_init\n");
 		chip_init(phy_rf_data, info.sta_mac);  /* resets clocks, so re-init uart */
-		relib_reset_uart_baud(NORMAL_CLK_FREQ);
 	}
 	else {
 		os_printf_plus("rf_cal[0] !=0x05,is 0x%02X\n");
