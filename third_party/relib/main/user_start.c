@@ -97,10 +97,7 @@ typedef struct __attribute__((packed)) {
 static_assert(sizeof(rf_cal_st) == 0x274, "rf_cal size mismatch");
 
 typedef struct __attribute__((packed)) {
-	union {
-		phy_init_ctrl_st phy_init;
-		uint8_t pad1[0x80];
-	};
+	esp_init_data_default_st esp_init;
 	union {
 		rf_cal_st rf_cal;
 	};
@@ -681,7 +678,7 @@ relib_user_local_init(void)
 	if ((rst_if.flag != 5) && (!bVar3)) {
 		write_data_to_rtc(rf_cal_data);
 	}
-	if (phy_rf_data->phy_init.param_ver_id == '\x05') {
+	if (phy_rf_data->esp_init.param_ver_id == '\x05') {
 		cVar9 = '\v';
 		cVar2 = phy_rf_data->pad1[0x71];
 		if (freq_trace_enable == false) {
