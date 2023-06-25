@@ -19,6 +19,7 @@
 #include "relib/s/ieee80211_conn.h"
 #include "relib/s/ieee80211com.h"
 #include "relib/s/wl_profile.h"
+#include "relib/s/phy_init_ctrl.h"
 
 #define BOOT_CLK_FREQ   52000000
 #define NORMAL_CLK_FREQ 80000000
@@ -83,17 +84,6 @@ typedef struct {
 	uint32_t depc;
 } rst_info_st;
 static_assert(sizeof(rst_info_st) == 0x1c, "rst_info size mismatch");
-
-typedef struct __attribute__((packed)) {
-	/* shallow struct def to avoid pulling in all the other struct members */
-	union {
-		struct {
-			uint8_t param_ver_id;
-			uint8_t pad1[107];
-		};
-	};
-} phy_init_ctrl_st;
-static_assert(sizeof(phy_init_ctrl_st) == 108, "phy_init_ctrl size mismatch");
 
 typedef struct __attribute__((packed)) {
 	union {
@@ -519,7 +509,7 @@ relib_read_macaddr_from_otp(uint8_t *mac) /* impl. from RTOS SDK */
 	return 0;
 }
 
-int register_chipv6_phy(void);
+int register_chipv6_phy(phy_init_and_rf_cal_st *param_1);
 void phy_disable_agc(void);
 void ieee80211_phy_init(ieee80211_phymode_t phyMode);
 void lmacInit(void);
@@ -539,7 +529,7 @@ void ICACHE_FLASH_ATTR
 chip_init(phy_init_and_rf_cal_st *param_1, uint8_t *macaddr)
 {
 	DPRINTF("chip_init\n");
-	if (register_chipv6_phy() != 0) {
+	if (register_chipv6_phy(param_1) != 0) {
 		os_printf_plus("%s %u\n", "mai", 0x130);
 		while (1);
 	}
