@@ -256,11 +256,63 @@ struct dport_regs {
 
 #define DPORT ((struct dport_regs *) 0x3ff00000)
 
-struct wdev_timer_regs {
-	REG32(COUNT);  /* microseconds, counting up */
+struct wdev_base_regs {
+	uint32_t res000[(0x014-0x000)/4];
+	REG32(RX_DESC);  // 0x014
+	REG32(reg018);   // 0x018
+	REG32(reg01c);   // 0x01c
 };
+static_assert(OFFSET_OF(struct wdev_base_regs, RX_DESC) == 0x14, "RX_DESC offset mismatch");
 
-#define WDEV_TIMER ((struct wdev_timer_regs *) 0x3ff20c00)
+#define WDEV_BASE ((struct wdev_base_regs *) 0x3ff20000)
+
+struct wdev_regs {
+	REG32(MICROS);  /* WDEV_COUNT_REG; microseconds, counting up */
+	REG32(reg004);  /* TODO: Check if the counter is 64bits and this is the upper 32 */
+	uint32_t res008[(0x018-0x008)/4];
+	REG32(INT_ENA);     // 0x018
+	REG32(reg01c);      // 0x01c
+	REG32(INT_STATUS);  // 0x020 /* wDev_ProcessFiq */
+	REG32(INT_ACK);     // 0x024
+	uint32_t res028[(0x084-0x028)/4];
+	REG32(TXRX_STATE);  // 0x084
+	uint32_t res088[(0x204-0x088)/4];
+	REG32(ACK_SNR);     // 0x204
+};
+static_assert(OFFSET_OF(struct wdev_regs, INT_ENA) == 0x18, "INT_ENA offset mismatch");
+static_assert(OFFSET_OF(struct wdev_regs, TXRX_STATE) == 0x84, "TXRX_STATE offset mismatch");
+static_assert(OFFSET_OF(struct wdev_regs, ACK_SNR) == 0x204, "ACK_SNR offset mismatch");
+
+#define WDEV ((struct wdev_regs *) 0x3ff20c00)
+
+struct wdev_timer_regs {
+	REG32(reg000);
+	REG32(TSF0_TIME_LO);   // 0x004
+	REG32(TSF0_TIME_HI);   // 0x008
+	REG32(reg00c);
+	REG32(reg010);
+	REG32(SLEEP0_CONF);    // 0x014
+	REG32(TSFSW0_LO);      // 0x018
+	REG32(TSFSW0_HI);      // 0x01c
+	uint32_t res020[(0x048-0x020)/4];
+	REG32(MAC_TIMER64_COUNT_LO); // 0x048  /* a.k.a. WDTVAL */
+	REG32(MAC_TIMER64_COUNT_HI); // 0x04c
+	uint32_t res050[(0x098-0x050)/4];
+	REG32(TSF0_TIMER_ENA); // 0x098
+	REG32(TSF0_TIMER_LO);  // 0x09c
+	REG32(TSF0_TIMER_HI);  // 0x0a0
+	uint32_t res0a4[(0x0c8-0x0a4)/4];
+	REG32(WDTCTL);         // 0x0c8
+	REG32(WDTOVF);         // 0x0cc  /* a.k.a. MAC_TIMER64BIT_ALARM */
+	uint32_t res0d0[(0x0fc-0x0d0)/4];
+	REG32(RXSTART_TIME);   // 0x0fc
+};
+static_assert(OFFSET_OF(struct wdev_timer_regs, MAC_TIMER64_COUNT_LO) == 0x48, "MAC_TIMER64_COUNT_LO offset mismatch");
+static_assert(OFFSET_OF(struct wdev_timer_regs, TSF0_TIMER_ENA) == 0x98, "TSF0_TIMER_ENA offset mismatch");
+static_assert(OFFSET_OF(struct wdev_timer_regs, WDTCTL) == 0xc8, "WDTCTL offset mismatch");
+static_assert(OFFSET_OF(struct wdev_timer_regs, RXSTART_TIME) == 0xfc, "RXSTART_TIME offset mismatch");
+
+#define WDEV_TIMER ((struct wdev_timer_regs *) 0x3ff21000)
 
 struct efuse_regs {
 	REG32(DATA[4]);

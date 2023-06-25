@@ -173,7 +173,7 @@ ets_timer_handler_isr(void)
 
 	saved = LOCK_IRQ_SAVE();
 	/* Read the seperate WDEV microsecond timer (counts up) */
-	now_us = WDEV_TIMER->COUNT;
+	now_us = WDEV->MICROS;
 	do {
 		/* FRC2 is a 32-bit counter that counts up, with higher resolution than the WDEV timer */
 		frc2_now = FRC2->COUNT;
@@ -198,7 +198,7 @@ LAB_40230a24:
 		if (t->timer_period != 0) {
 			/* It's odd that this is checking against the wdev timer */
 			/* If we have spent more than 15ms in the handler loop, override the frc2 count reading? */
-			if ((uint32_t)(WDEV_TIMER->COUNT - now_us) < 15001) {
+			if ((uint32_t)(WDEV->MICROS - now_us) < 15001) {
 				frc2_now = t->timer_expire;
 			}
 			/* Update the timer expiry time by adding the period to the FRC2 count we read above */

@@ -53,7 +53,7 @@ uint8_t lwip1_pbuf_free(struct pbuf *p);
 int system_pp_recycle_rx_pkt(void *eb); /* trampoline/alias which calls ppRecycleRxPkt */
 
 u32_t sys_now() {
-	return WDEV_TIMER->COUNT / 1000;
+	return WDEV->MICROS / 1000;
 }
 
 struct pbuf* ICACHE_FLASH_ATTR

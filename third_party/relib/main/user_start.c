@@ -517,6 +517,7 @@ void wDev_Initialize(void);
 void pp_attach(void);
 void ieee80211_ifattach(ieee80211com_st *ic, uint8_t *macaddr);
 void wDev_ProcessFiq(void *unused_arg);
+void relib_wDev_ProcessFiq(void *unused_arg);
 void pm_attach(void);
 void fpm_attach(void);
 void phy_enable_agc(void);
@@ -545,7 +546,7 @@ chip_init(phy_init_and_rf_cal_st *param_1, uint8_t *macaddr)
 	wDev_Initialize();
 	relib_pp_attach();
 	ieee80211_ifattach(&g_ic, macaddr);
-	_xtos_set_interrupt_handler_arg(0, wDev_ProcessFiq, NULL);
+	_xtos_set_interrupt_handler_arg(0, relib_wDev_ProcessFiq, NULL);
 	_xtos_ints_on(1);
 	pm_attach();
 	fpm_attach();
