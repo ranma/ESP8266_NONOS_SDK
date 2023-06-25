@@ -680,12 +680,12 @@ relib_user_local_init(void)
 	}
 	if (phy_rf_data->esp_init.param_ver_id == '\x05') {
 		cVar9 = '\v';
-		cVar2 = phy_rf_data->pad1[0x71];
+		cVar2 = phy_rf_data->esp_init._113;
 		if (freq_trace_enable == false) {
-			uVar6 = phy_rf_data->pad1[0x70];
+			uVar6 = phy_rf_data->esp_init._112;
 			if (((uVar6 < 2) && (-1 < (int)uVar6)) || (uVar6 == 3)) {
 LAB_4022f98c:
-				phy_rf_data->pad1[0x70] = '\0';
+				phy_rf_data->esp_init._112 = '\0';
 			}
 			else {
 				cVar9 = '\a';
@@ -693,7 +693,7 @@ LAB_4022f98c:
 					if (-1 < cVar2) {
 						if (cVar2 < '\a') {
 							cVar9 = '\0';
-							phy_rf_data->pad1[0x71] = '\0';
+							phy_rf_data->esp_init._113 = '\0';
 						}
 						else {
 							cVar9 = '\x05';
@@ -703,14 +703,14 @@ LAB_4022f98c:
 				else if (uVar6 == 7) {
 					if (-1 < cVar2) {
 						cVar9 = '\0';
-						phy_rf_data->pad1[0x71] = '\0';
+						phy_rf_data->esp_init._113 = '\0';
 					}
 				}
 				else if (uVar6 == 9) {
 					if (-1 < cVar2) {
 						if (cVar2 < '\a') {
 							cVar9 = '\0';
-							phy_rf_data->pad1[0x71] = '\0';
+							phy_rf_data->esp_init._113 = '\0';
 						}
 						else {
 							cVar9 = '\x05';
@@ -721,27 +721,27 @@ LAB_4022f98c:
 					if (uVar6 != 0xb) goto LAB_4022f98c;
 					if (-1 < cVar2) {
 						cVar9 = '\0';
-						phy_rf_data->pad1[0x71] = '\0';
+						phy_rf_data->esp_init._113 = '\0';
 					}
 				}
-				phy_rf_data->pad1[0x70] = cVar9;
+				phy_rf_data->esp_init._112 = cVar9;
 			}
 		}
 		else if (freq_trace_enable == true) {
-			bVar1 = phy_rf_data->pad1[0x70];
+			bVar1 = phy_rf_data->esp_init._112;
 			cVar8 = '\x03';
 			if ((1 < bVar1) && (bVar1 != 3)) {
 				if (bVar1 == 5) {
 					cVar8 = cVar9;
 					if ((-1 < cVar2) && (cVar8 = '\t', cVar2 < '\a')) {
-						phy_rf_data->pad1[0x71] = '\0';
+						phy_rf_data->esp_init._113 = '\0';
 						cVar8 = '\x03';
 					}
 				}
 				else if (bVar1 == 7) {
 					cVar8 = cVar9;
 					if (-1 < cVar2) {
-						phy_rf_data->pad1[0x71] = '\0';
+						phy_rf_data->esp_init._113 = '\0';
 						cVar8 = '\x03';
 					}
 				}
@@ -749,7 +749,7 @@ LAB_4022f98c:
 					cVar8 = cVar9;
 					if (-1 < cVar2) {
 						if (cVar2 < '\a') {
-							phy_rf_data->pad1[0x71] = '\0';
+							phy_rf_data->esp_init._113 = '\0';
 							cVar8 = '\x03';
 						}
 						else {
@@ -758,11 +758,11 @@ LAB_4022f98c:
 					}
 				}
 				else if ((bVar1 == 0xb) && (cVar8 = cVar9, -1 < cVar2)) {
-					phy_rf_data->pad1[0x71] = '\0';
+					phy_rf_data->esp_init._113 = '\0';
 					cVar8 = '\x03';
 				}
 			}
-			phy_rf_data->pad1[0x70] = cVar8;
+			phy_rf_data->esp_init._112 = cVar8;
 		}
 		chip_init(phy_rf_data, info.sta_mac);  /* resets clocks, so re-init uart */
 	}
@@ -771,12 +771,12 @@ LAB_4022f98c:
 		ets_delay_us(10000);
 		system_restart_local();
 	}
-	g_ic.phy_function = (phy_rf_data->pad1[0x70] & 5U) == 1;
+	g_ic.phy_function = (phy_rf_data->esp_init._112 & 5U) == 1;
 	os_printf_plus("rf cal sector: %d\n",system_rf_cal_sector);
 	os_printf_plus("freq trace enable %d\n",freq_trace_enable);
-	os_printf_plus("rf[112] : %02x\n", phy_rf_data->pad1[0x70]);
-	os_printf_plus("rf[113] : %02x\n", phy_rf_data->pad1[0x71]);
-	os_printf_plus("rf[114] : %02x\n", phy_rf_data->pad1[0x72]);
+	os_printf_plus("rf[112] : %02x\n", phy_rf_data->esp_init._112);
+	os_printf_plus("rf[113] : %02x\n", phy_rf_data->esp_init._113);
+	os_printf_plus("rf[114] : %02x\n", phy_rf_data->esp_init._114);
 	if ((bVar3) &&
 		 (((rst_if.flag != 5 && (uVar6 = rtc_get_reset_reason(), uVar6 == 2)) ||
 			(uVar6 = rtc_get_reset_reason(), uVar6 == 1)))) {

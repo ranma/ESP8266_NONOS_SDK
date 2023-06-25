@@ -2,7 +2,7 @@
 #define RELIB_PHY_INIT_CTRL_H
 
 struct esp_init_data_default {
-	uint8_t _0_param_ver_id;          // 0
+	uint8_t param_ver_id;          // 0
 	uint8_t _1;
 	uint8_t rx_gain_swp_step[15];  // 2
 	int8_t gain_cmp[3];            // 17 / 0x11
@@ -91,7 +91,6 @@ struct esp_init_data_default {
 	uint8_t _125;
 	uint8_t _126;
 	uint8_t _127;
-	uint8_t _128;
 };
 
 typedef struct esp_init_data_default esp_init_data_default_st;
