@@ -57,11 +57,13 @@ REDEFINE_ETS_SYMS = \
 	strncmp \
 	strncpy \
 	strstr \
+	strchr \
+	strrchr \
 
 OBJ_REMOVE_libmain.a = mem_manager.o \
 	eagle_lwip_if.o \
 	ets_timer.o \
-	esf_buf.o
+	eagle_lib.o
 
 OBJ_REMOVE_libpp.a = esf_buf.o
 

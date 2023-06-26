@@ -1,6 +1,7 @@
 #ifndef ETS_ROM_H
 #define ETS_ROM_H
 
+#include <stdarg.h>
 #include "c_types.h"
 #include "spi_flash.h"
 
@@ -90,6 +91,8 @@ void bzero(void*, uint32_t);
 void ets_delay_us(uint32_t us);
 void ets_install_putc1(void (*p)(char c));
 void ets_printf(char*, ...);
+typedef void (*vprintf_putc_fn)(char c);
+int ets_vprintf(const vprintf_putc_fn putc_fn, const char *format, va_list ap);
 
 uint32_t rtc_get_reset_reason(void);
 
