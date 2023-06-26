@@ -16,6 +16,7 @@
 #include "relib/relib.h"
 #include "relib/hooks.h"
 #include "relib/efuse_register.h"
+#include "relib/phy_ops.h"
 #include "relib/s/ieee80211_conn.h"
 #include "relib/s/ieee80211com.h"
 #include "relib/s/wl_profile.h"
@@ -120,14 +121,14 @@ int wifi_softap_stop(int);
 bool wifi_station_connect(void);
 uint8_t wifi_station_get_auto_connect(void);
 uint8_t esp_crc8(uint8_t *src, int len);
-void chip_init(phy_init_and_rf_cal_st *init_data, uint8_t *mac);
+void chip_init(esp_init_data_default_st *init_data, uint8_t *mac);
 void chip_v6_set_chan_offset(int, int);
 void espconn_init(void);
 void load_non_32_wide_handler(xtos_exception_frame_t *ef, int cause);
 void lwip_init(void);
 void netif_set_default(struct netif *netif);
 void phy_afterwake_set_rfoption(int opt);
-void phy_get_bb_evm(void);
+uint32_t phy_get_bb_evm(void);
 void rom_i2c_writeReg(uint8_t block, uint8_t host_id, uint8_t reg_add, uint8_t data);
 void sleep_reset_analog_rtcreg_8266(void);
 void spi_flash_clk_sel(int speed);
@@ -190,7 +191,8 @@ void flash_gd25q32c_write_status(void) { }
      SOC_CACHE_SIZE 0 // 16KB
      SOC_CACHE_SIZE 1 // 32KB
  */
-extern void Cache_Read_Enable(uint8_t odd_even, uint8_t mb_region, uint8_t cache_size);
+void Cache_Read_Enable(uint8_t odd_even, uint8_t mb_region, uint8_t cache_size);
+void Cache_Read_Disable(void);
 
 static bool cache_map;
 
@@ -506,7 +508,7 @@ relib_read_macaddr_from_otp(uint8_t *mac) /* impl. from RTOS SDK */
 	return 0;
 }
 
-int register_chipv6_phy(phy_init_and_rf_cal_st *param_1);
+int register_chipv6_phy(esp_init_data_default_st *init_data);
 void phy_disable_agc(void);
 void ieee80211_phy_init(ieee80211_phymode_t phyMode);
 void lmacInit(void);
@@ -524,10 +526,10 @@ void wDevEnableRx(void);
 void relib_pp_attach(void);
 
 void ICACHE_FLASH_ATTR
-chip_init(phy_init_and_rf_cal_st *param_1, uint8_t *macaddr)
+chip_init(esp_init_data_default_st *init_data, uint8_t *macaddr)
 {
 	DPRINTF("chip_init\n");
-	if (register_chipv6_phy(param_1) != 0) {
+	if (register_chipv6_phy(init_data) != 0) {
 		os_printf_plus("%s %u\n", "mai", 0x130);
 		while (1);
 	}
@@ -680,7 +682,7 @@ relib_user_local_init(void)
 	}
 	if (phy_rf_data->esp_init.param_ver_id == '\x05') {
 		cVar9 = '\v';
-		cVar2 = phy_rf_data->esp_init._113;
+		cVar2 = phy_rf_data->esp_init.freq_offset;
 		if (freq_trace_enable == false) {
 			uVar6 = phy_rf_data->esp_init._112;
 			if (((uVar6 < 2) && (-1 < (int)uVar6)) || (uVar6 == 3)) {
@@ -693,7 +695,7 @@ LAB_4022f98c:
 					if (-1 < cVar2) {
 						if (cVar2 < '\a') {
 							cVar9 = '\0';
-							phy_rf_data->esp_init._113 = '\0';
+							phy_rf_data->esp_init.freq_offset = '\0';
 						}
 						else {
 							cVar9 = '\x05';
@@ -703,14 +705,14 @@ LAB_4022f98c:
 				else if (uVar6 == 7) {
 					if (-1 < cVar2) {
 						cVar9 = '\0';
-						phy_rf_data->esp_init._113 = '\0';
+						phy_rf_data->esp_init.freq_offset = '\0';
 					}
 				}
 				else if (uVar6 == 9) {
 					if (-1 < cVar2) {
 						if (cVar2 < '\a') {
 							cVar9 = '\0';
-							phy_rf_data->esp_init._113 = '\0';
+							phy_rf_data->esp_init.freq_offset = '\0';
 						}
 						else {
 							cVar9 = '\x05';
@@ -721,7 +723,7 @@ LAB_4022f98c:
 					if (uVar6 != 0xb) goto LAB_4022f98c;
 					if (-1 < cVar2) {
 						cVar9 = '\0';
-						phy_rf_data->esp_init._113 = '\0';
+						phy_rf_data->esp_init.freq_offset = '\0';
 					}
 				}
 				phy_rf_data->esp_init._112 = cVar9;
@@ -734,14 +736,14 @@ LAB_4022f98c:
 				if (bVar1 == 5) {
 					cVar8 = cVar9;
 					if ((-1 < cVar2) && (cVar8 = '\t', cVar2 < '\a')) {
-						phy_rf_data->esp_init._113 = '\0';
+						phy_rf_data->esp_init.freq_offset = '\0';
 						cVar8 = '\x03';
 					}
 				}
 				else if (bVar1 == 7) {
 					cVar8 = cVar9;
 					if (-1 < cVar2) {
-						phy_rf_data->esp_init._113 = '\0';
+						phy_rf_data->esp_init.freq_offset = '\0';
 						cVar8 = '\x03';
 					}
 				}
@@ -749,7 +751,7 @@ LAB_4022f98c:
 					cVar8 = cVar9;
 					if (-1 < cVar2) {
 						if (cVar2 < '\a') {
-							phy_rf_data->esp_init._113 = '\0';
+							phy_rf_data->esp_init.freq_offset = '\0';
 							cVar8 = '\x03';
 						}
 						else {
@@ -758,13 +760,13 @@ LAB_4022f98c:
 					}
 				}
 				else if ((bVar1 == 0xb) && (cVar8 = cVar9, -1 < cVar2)) {
-					phy_rf_data->esp_init._113 = '\0';
+					phy_rf_data->esp_init.freq_offset = '\0';
 					cVar8 = '\x03';
 				}
 			}
 			phy_rf_data->esp_init._112 = cVar8;
 		}
-		chip_init(phy_rf_data, info.sta_mac);  /* resets clocks, so re-init uart */
+		chip_init(&phy_rf_data->esp_init, info.sta_mac);  /* resets clocks, so re-init uart */
 	}
 	else {
 		os_printf_plus("rf_cal[0] !=0x05,is 0x%02X\n");
@@ -775,7 +777,7 @@ LAB_4022f98c:
 	os_printf_plus("rf cal sector: %d\n",system_rf_cal_sector);
 	os_printf_plus("freq trace enable %d\n",freq_trace_enable);
 	os_printf_plus("rf[112] : %02x\n", phy_rf_data->esp_init._112);
-	os_printf_plus("rf[113] : %02x\n", phy_rf_data->esp_init._113);
+	os_printf_plus("rf[113] : %02x\n", phy_rf_data->esp_init.freq_offset);
 	os_printf_plus("rf[114] : %02x\n", phy_rf_data->esp_init._114);
 	if ((bVar3) &&
 		 (((rst_if.flag != 5 && (uVar6 = rtc_get_reset_reason(), uVar6 == 2)) ||
@@ -847,6 +849,262 @@ LAB_4022f927:
 }
 #endif
 
+uint32_t
+phy_get_bb_evm(void)
+{
+	I2C_SAR->reg048 &= 0xfffffffe;
+	if (((EFUSE->DATA[2] >> 0xc) & 10) == 10) {
+		BB->reg574 = 0xe690a568;
+	}
+	else {
+		BB->reg574 = 0xeab4d027;
+	}
+	return BB->EVM >> 0x10 & 0x1fff;
+}
+
+void
+fix_cache_bug(void)
+{
+	Cache_Read_Disable();
+	phy_get_bb_evm();
+	Cache_Read_Enable_New();
+}
+
+void phy_get_romfunc_addr(void);
+void set_crystal_uart(void);
+void ant_switch_init(void);
+void phy_gpio_cfg(void);
+void tx_cont_dis(void);
+int register_chipv6_phy_init_param(esp_init_data_default_st *init_data);
+int rtc_mem_check(int);
+int rtc_mem_backup(uint8_t *mem_start, uint8_t *mem_end, uint32_t rtc_ram_off);
+int rtc_mem_recovery(uint8_t *mem_start, uint8_t *mem_end, uint32_t rtc_ram_off);
+void reduce_current_init(void);
+void register_phy_ops(phy_ops_st *phy_ops);
+void chip_v6_set_chan(int chan);
+void sleep_set_rxpbus(int arg);
+void phy_version_print(void);
+
+extern chip6_phy_init_ctrl_st chip6_phy_init_ctrl;
+extern chip6_sleep_params_st chip6_sleep_params;
+extern uint8_t phy_in_most_power;
+extern uint16_t phy_freq_offset;
+extern uint8_t init_rf_no_cal;
+extern uint8_t rx_table_renew_en;
+extern uint32_t test_print_time;
+
+int chip_v6_rf_init(int ch, int n);
+int chip_v6_set_chanfreq(int chfr);
+void chip_v6_set_chan(int ch);
+int chip_v6_unset_chanfreq(void);
+void rom_chip_v5_disable_cca(void);
+void rom_chip_v5_enable_cca(void);
+int chip_v6_initialize_bb(void);
+void chip_v6_set_sense(void);
+
+static const phy_ops_st phy_ops = {
+	chip_v6_rf_init,
+	chip_v6_set_chanfreq,
+	chip_v6_set_chan,
+	chip_v6_unset_chanfreq,
+	rom_chip_v5_enable_cca,
+	rom_chip_v5_disable_cca,
+	chip_v6_initialize_bb,
+	chip_v6_set_sense,
+};
+
+int ICACHE_FLASH_ATTR
+register_chipv6_phy(esp_init_data_default_st *init_data)
+{
+	bool bVar1;
+	bool bVar2;
+	bool bVar3;
+	bool bVar4;
+	bool bVar5;
+	bool bVar6;
+	bool bVar7;
+	int iVar8;
+	int iVar9;
+	bool bVar10;
+	uint32_t uVar11;
+	uint32_t uVar12;
+	char local_40;
+	uint32_t uStack_3c;
+	uint32_t uStack_38;
+	int iStack_30;
+	static bool initdone = 0;
+
+	fix_cache_bug();
+	phy_get_romfunc_addr();
+	if (!initdone) {
+		iStack_30 = register_chipv6_phy_init_param(init_data);
+		phy_in_most_power = chip6_phy_init_ctrl.target_power_init[0];
+	}
+	else {
+		iStack_30 = 0;
+		local_40 = chip6_sleep_params._48;
+	}
+	set_crystal_uart();
+	ant_switch_init();
+	if (!initdone) {
+		phy_gpio_cfg();
+	}
+	tx_cont_dis();
+	if ((!initdone) && ((chip6_phy_init_ctrl._76 & 0xc) != 0)) {
+		phy_freq_offset = (int)chip6_phy_init_ctrl.freq_offset << 3;
+	}
+	uVar11 = (uint32_t)chip6_phy_init_ctrl._78;
+	if (uVar11 == 2) {
+		uVar11 = 1;
+		chip6_phy_init_ctrl._78 = '\x01';
+	}
+	uVar12 = RTC->STORE[3] & 0xff;
+	if (uVar12 == 0) {
+		uVar12 = uVar11;
+	}
+	bVar4 = true;
+	if ((uVar12 != 0) && (uVar12 != 1)) {
+		bVar4 = false;
+	}
+	bVar2 = false;
+	bVar1 = uVar12 == 2;
+	if ((((RTC->RESET_HW_CAUSE_REG & 7) == 2) && (!initdone)) &&
+		 (RTCMEM->SYSTEM[0] == 5)) {
+		bVar2 = true;
+	}
+	bVar5 = !initdone && !bVar2;
+	bVar3 = false;
+	if (((bVar4) || (bVar1)) && (bVar5)) {
+		bVar3 = true;
+	}
+	if (bVar3) {
+		/* Copy 128 bytes of rfcal data to RTCMEM->BACKUP[0x00 .. 0x1f] */
+		write_data_to_rtc((uint8_t *)(init_data + 0x80));
+	}
+	if (!initdone) {
+		/* Validate the ID in the rfcal data matches EFUSE ID */
+		uStack_3c = (EFUSE->DATA[2] & 0xf000) << 0x10 | EFUSE->DATA[1] & 0xfffffff;
+		uStack_38 = EFUSE->DATA[0] & 0xff000000 | EFUSE->DATA[3] & 0xffffff;
+		bVar3 = true;
+		if ((uStack_3c == RTCMEM->BACKUP[0x60/4]) && (uStack_38 == RTCMEM->BACKUP[0x64/4])) {
+			bVar3 = false;
+		}
+	}
+	else {
+		bVar3 = false;
+	}
+	uVar11 = RTCMEM->BACKUP[0x6c/4] >> 0x10 & 0xff;
+	if (bVar2) {
+		bVar1 = uVar11 == 2 || bVar1;
+	}
+	bVar6 = uVar11 == 4;
+	if (!initdone) {
+		if (bVar2) {
+			uVar12 = RTCMEM->BACKUP[0x6c/4] & 0xffff;
+			if ((chip6_phy_init_ctrl._72 == 0) || (uVar11 != 0)) {
+				uVar11 = uVar12 + 1 & 0xffff;
+			}
+			else if (uVar12 < chip6_phy_init_ctrl._72) {
+				bVar1 = true;
+				uVar11 = uVar12 + 1 & 0xffff;
+			}
+			else {
+				uVar11 = 0;
+			}
+		}
+		else {
+			uVar11 = 0;
+		}
+		RTCMEM->BACKUP[0x6c/4] = RTCMEM->BACKUP[0x6c/4] & 0xffff0000 | uVar11;
+	}
+	bVar10 = true;
+	if (((((!bVar4) && (!bVar1)) || (initdone != '\0')) || (bVar2 && bVar6)
+			) && ((initdone != '\x01' || ((~chip6_sleep_params._0_4_ & 0xff0000) == 0)))) {
+		bVar10 = false;
+	}
+	if (bVar10) {
+		iVar8 = rtc_mem_check(1);
+		bVar7 = true;
+		if ((iVar8 == 0) && (!bVar3)) {
+			bVar7 = false;
+		}
+		if (bVar7) {
+			bVar10 = false;
+		}
+	}
+	if (bVar10) {
+		chip6_sleep_params._96_4_ = rtc_mem_recovery((uint8_t *)&chip6_sleep_params,&chip6_sleep_params._83,0);
+		rtc_mem_recovery(&chip6_sleep_params._84,&chip6_sleep_params._93,chip6_sleep_params._96_4_);
+		if (!initdone) {
+			if (bVar1) {
+				if (bVar5) {
+					chip6_sleep_params._0_4_ = chip6_sleep_params._0_4_ & 0xffbfffff;
+				}
+			}
+			else if (bVar4) {
+				chip6_sleep_params._0_4_ = 0x200000;
+				chip6_sleep_params._46_2_ = 0xfe80;
+			}
+		}
+	}
+	init_rf_no_cal = 0;
+	if ((bVar10) && (bVar1)) {
+		init_rf_no_cal = 1;
+	}
+	iVar9 = phy_check_data_table(phy_rx_gain_dc_table,0x7d,1);
+	iVar8 = WDEV->MICROS;
+	rx_table_renew_en = '\x01';
+	if ((iVar9 == 0) && ((chip6_sleep_params._0_4_ >> 0x10 & 1) != 0)) {
+		rx_table_renew_en = '\0';
+	}
+	if (bVar2 && bVar6) {
+		reduce_current_init();
+	}
+	else {
+		register_phy_ops(&phy_ops);
+	}
+	test_print_time = WDEV->MICROS - iVar8;
+	if (rx_table_renew_en != '\0') {
+		phy_check_data_table(phy_rx_gain_dc_table,0x7d,0);
+	}
+	if (initdone == '\x01') {
+		if ((chip6_sleep_params._0_4_ >> 0x1b & 1) == 0) {
+			chip_v6_set_chan((int)local_40);
+		}
+	}
+	else if (!bVar2 || !bVar6) {
+		chip6_sleep_params._96_4_ = rtc_mem_backup((uint8_t *)&chip6_sleep_params,&chip6_sleep_params._83,0);
+		rtc_mem_backup(&chip6_sleep_params._84,&chip6_sleep_params._93,chip6_sleep_params._96_4_);
+		RTCMEM->BACKUP[0x60/4] = uStack_3c;
+		RTCMEM->BACKUP[0x64/4] = uStack_38;
+		rtc_mem_check(0);
+		chip6_sleep_params._0_4_ = chip6_sleep_params._0_4_ | 0x2000000;
+	}
+	RTCMEM->BACKUP[0x7c/4] = RTCMEM->BACKUP[0x7c/4] & 0xffff | 0x4840000;
+	if ((!bVar10) && (bVar5)) {
+		get_data_from_rtc((uint8_t *)(init_data + 0x80));
+	}
+	/* Testmodes modifying "clear channel assesment" (CCA) regs
+	if (chip6_phy_init_ctrl._59 == '\x03') {
+		_DAT_60009b64 = _DAT_60009b64 & 0xfff00fff | (uint32_t)chip6_phy_init_ctrl._58 << 0xc;
+	}
+	if (chip6_phy_init_ctrl._59 == '\x04') {
+		_DAT_60009b64 = _DAT_60009b64 & 0xfff00fff | (uint32_t)chip6_phy_init_ctrl._58 << 0xc;
+		_DAT_60009d68 = _DAT_60009d68 | 0x40000;
+	}
+	if (chip6_phy_init_ctrl._60 == '\x02') {
+		_DAT_3ff20400 = 0x55555555;
+	}
+	*/
+	if ((chip6_sleep_params._0_4_ >> 0x1b & 1) != 0) {
+		sleep_set_rxpbus(1);
+	}
+	if (!initdone) {
+		phy_version_print();
+	}
+	initdone = 1;
+	return iStack_30;
+}
 
 void
 relib_user_start(void)

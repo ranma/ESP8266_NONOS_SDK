@@ -16,6 +16,29 @@ extern "C" {
 #define BIT(x) (1 << x)
 #endif
 
+#define REGBASE_LOAD(reg_base, reg) ({ \
+	uint32_t retval; \
+	void *base = (void*)(reg_base); \
+	const uint32_t ofs = __builtin_offsetof(struct gpio_regs, reg); \
+	__asm__ __volatile__( \
+		"l32i %[retval], %[base], %[ofs]\n" \
+		: [retval]"=a"(retval) \
+		: [base]"p"(base), [ofs]"i"(ofs) \
+	); \
+	retval; \
+})
+#define REGBASE_STORE(reg_base, reg, reg_val) ({ \
+	uint32_t val = reg_val; \
+	void *base = (void*)(reg_base); \
+	const uint32_t ofs = __builtin_offsetof(struct gpio_regs, reg); \
+	__asm__ __volatile__( \
+		"s32i %[val], %[base], %[ofs]\n" \
+		: : [base]"p"(base), [ofs]"i"(ofs), [val]"a"(val) \
+	); \
+})
+#define REG_LOAD(addr) REGBASE_LOAD(addr, 0)
+#define REG_WRITE(addr, val) REGBASE_WRITE(addr, 0, val)
+
 enum irq_num {
 	SLC_IRQ = 1,
 	SPI_IRQ = 2,
@@ -191,6 +214,12 @@ struct wdt_regs {
 };
 #define WDT ((struct wdt_regs *) 0x60000900)
 
+struct i2c_sar_regs {
+	uint32_t reg000[(0x48-0x00)/4];
+	REG32(reg048);    // 0x048
+};
+#define I2C_SAR ((struct i2c_sar_regs *) 0x60000d00)
+
 struct rtc_mem {
 	REG32(BACKUP[64]); // 0x000, 256 bytes */
 	REG32(SYSTEM[64]); // 0x100, 256 bytes */
@@ -226,6 +255,15 @@ struct iomux_regs {
 };
 
 #define IOMUX ((struct iomux_regs *) 0x60000800)
+
+struct bb_regs {
+	REG32(EVM);     // 0x000
+	uint32_t res0004[(0x574-0x004)/4];
+	REG32(reg574);  // 0x574
+};
+static_assert(OFFSET_OF(struct bb_regs, reg574) == 0x574, "reg574 offset mismatch");
+
+#define BB ((struct bb_regs *) 0x60009800)
 
 
 struct dport_regs {
@@ -315,7 +353,7 @@ static_assert(OFFSET_OF(struct wdev_timer_regs, RXSTART_TIME) == 0xfc, "RXSTART_
 #define WDEV_TIMER ((struct wdev_timer_regs *) 0x3ff21000)
 
 struct efuse_regs {
-	REG32(DATA[4]);
+	uint32_t DATA[4];
 };
 
 #define EFUSE ((struct efuse_regs *) 0x3ff00050)

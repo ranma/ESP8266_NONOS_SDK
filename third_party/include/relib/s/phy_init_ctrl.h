@@ -76,7 +76,7 @@ struct esp_init_data_default {
 	uint8_t ch14_freq_lo; // 110
 	uint8_t ch14_freq_hi; // 111
 	uint8_t _112;
-	uint8_t _113;
+	uint8_t freq_offset;  // 113
 	uint8_t _114;
 	uint8_t _115;
 	uint8_t _116;
@@ -131,8 +131,8 @@ struct chip6_phy_init_ctrl {
 	uint8_t _55;
 	uint8_t _56;
 	uint8_t _57; // tx_atten_set_interp; chip_v6_initialize_bb; 1 == tx_cont_cfg(1)
-	uint8_t _58;
-	uint8_t _59;
+	uint8_t _58; // cca-related
+	uint8_t _59; // cca-related
 	uint8_t _60; // chip_v6_set_chan
 	uint8_t low_power_en;  // 61; tx_atten_set_interp, 0 == set_most_pwr_reg, chip_v6_initialize_bb
 	uint8_t lp_rf_stg10;   // 62; chip_v6_initialize_bb
@@ -150,7 +150,7 @@ struct chip6_phy_init_ctrl {
 	uint8_t ch14_freq_lo; // ram_set_channel_freq, pll trim
 	uint8_t ch14_freq_hi; // ram_set_channel_freq, pll trim
 	uint8_t _76; // chip_60_set_channel, chip_v6_set_chan_offset, phy_bb_rx_cfg
-	uint8_t _77; // chip_v6_set_chan_offset
+	uint8_t freq_offset; // 77, chip_v6_set_chan_offset
 	uint8_t _78; // register_chipv6_phy
 	uint8_t _79;
 };
@@ -232,5 +232,105 @@ struct phy_init_ctrl {
 typedef struct phy_init_ctrl phy_init_ctrl_st;
 
 static_assert(sizeof(phy_init_ctrl_st) == 108, "phy_init_ctrl size mismatch");
+
+struct chip6_sleep_params {
+	uint32_t _0_4_;
+	uint8_t  _4;
+	uint8_t  _5;
+	uint8_t  _6;
+	uint8_t  _7;
+	uint8_t  _8;
+	uint8_t  _9;
+	uint8_t  _10;
+	uint8_t  _11;
+	uint8_t  _12;
+	uint8_t  _13;
+	uint8_t  _14;
+	uint8_t  _15;
+	uint8_t  _16;
+	uint8_t  _17;
+	uint8_t  _18;
+	uint8_t  _19;
+	uint8_t  _20;
+	uint8_t  _21;
+	uint8_t  _22;
+	uint8_t  _23;
+	uint8_t  _24;
+	uint8_t  _25;
+	uint8_t  _26;
+	uint8_t  _27;
+	uint8_t  _28;
+	uint8_t  _29;
+	uint8_t  _30;
+	uint8_t  _31;
+	uint8_t  _32;
+	uint8_t  _33;
+	uint8_t  _34;
+	uint8_t  _35;
+	uint8_t  _36;
+	uint8_t  _37;
+	uint8_t  _38;
+	uint8_t  _39;
+	uint8_t  _40;
+	uint8_t  _41;
+	uint8_t  _42;
+	uint8_t  _43;
+	uint8_t  _44;
+	uint8_t  _45;
+	uint16_t _46_2_;
+	uint8_t  _48;
+	uint8_t  _49;
+	uint8_t  _50;
+	uint8_t  _51;
+	uint8_t  _52;
+	uint8_t  _53;
+	uint8_t  _54;
+	uint8_t  _55;
+	uint8_t  _56;
+	uint8_t  _57;
+	uint8_t  _58;
+	uint8_t  _59;
+	uint8_t  _60;
+	uint8_t  _61;
+	uint8_t  _62;
+	uint8_t  _63;
+	uint8_t  _64;
+	uint8_t  _65;
+	uint8_t  _66;
+	uint8_t  _67;
+	uint8_t  _68;
+	uint8_t  _69;
+	uint8_t  _70;
+	uint8_t  _71;
+	uint8_t  _72;
+	uint8_t  _73;
+	uint8_t  _74;
+	uint8_t  _75;
+	uint8_t  _76;
+	uint8_t  _77;
+	uint8_t  _78;
+	uint8_t  _79;
+	uint8_t  _80;
+	uint8_t  _81;
+	uint8_t  _82;
+	uint8_t  _83;
+	uint8_t  _84;
+	uint8_t  _85;
+	uint8_t  _86;
+	uint8_t  _87;
+	uint8_t  _88;
+	uint8_t  _89;
+	uint8_t  _90;
+	uint8_t  _91;
+	uint8_t  _92;
+	uint8_t  _93;
+	uint8_t  _94;
+	uint8_t  _95;
+	uint32_t _96_4_;
+};
+typedef struct chip6_sleep_params chip6_sleep_params_st;
+
+static_assert(sizeof(chip6_sleep_params_st) == 100, "chip6_sleep_params_st size mismatch");
+
 
 #endif /* RELIB_PHY_INIT_CTRL_H */
