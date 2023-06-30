@@ -130,7 +130,7 @@ void user_spi_flash_dio_to_qio_pre_init(void);
 void user_start(void);
 void user_uart_wait_tx_fifo_empty(uint32_t ch, uint32_t wait_micros);
 void user_uart_write_char(char c);
-void wdt_init(int enable_hw_watchdog);
+void wdt_init(bool hw_wdt_enable);
 void wifi_set_backup_mac(const uint8_t *src);
 void wifi_softap_cacl_mac(uint8_t *dst, const uint8_t *src);
 void write_data_to_rtc(uint8_t*);
@@ -525,6 +525,7 @@ void ieee80211_phy_init(ieee80211_phymode_t phyMode);
 void lmacInit(void);
 void wDev_Initialize(void);
 void pp_attach(void);
+void pp_soft_wdt_init(void);
 void ieee80211_ifattach(ieee80211com_st *ic, uint8_t *macaddr);
 void wDev_ProcessFiq(void *unused_arg);
 void relib_wDev_ProcessFiq(void *unused_arg);
@@ -581,6 +582,46 @@ flash_data_check(uint8_t *data)
 		return 1;
 	}
 	return 0;
+}
+
+void
+wdt_feed(void *unused_arg)
+{
+#if 0
+	/* Original code fills in rst_info, only to overwrite it using system_rtc_mem_read... */
+	rst_info_st rst_info;
+	rst_info.exccause = *in_EXCCAUSE;
+	rst_info.epc1 = *in_EPC1;
+	rst_info.epc2 = *in_EPC2;
+	rst_info.epc3 = *in_EPC3;
+	rst_info.excvaddr = *in_EXCVADDR;
+	rst_info.depc = *in_DEPC;
+	system_rtc_mem_read(0, &rst_info, 0x1c);
+	RTC->STORE[0] = REASON_WDT_RST;
+	rst_info.reason = REASON_WDT_RST;
+	system_rtc_mem_write(0, &rst_info, 0x1c);
+#else
+	rst_info_st *rst_info = (rst_info_st*)&RTCMEM->SYSTEM[0];
+	RTC->STORE[0] = REASON_WDT_RST;
+	rst_info->reason = REASON_WDT_RST;
+#endif
+}
+
+void ICACHE_FLASH_ATTR
+wdt_init(bool hw_wdt_enable)
+{
+	if (hw_wdt_enable) {
+		WDT->CTL &= ~1;
+		ets_isr_attach(8, wdt_feed, 0);
+		DPORT->EDGE_INT_ENABLE |= 1;
+		WDT->OP = 0xb;
+		WDT->OP_ND = 0xd;
+		WDT->CTL |= 0x38;
+		WDT->CTL &= ~6;
+		WDT->CTL |= 1;
+		ets_isr_unmask(0x100);
+	}
+	pp_soft_wdt_init();
 }
 
 #if 1
@@ -840,7 +881,7 @@ LAB_4022f98c:
 	}
 	system_rtc_mem_write(0,pv,0x1c);
 	vPortFree(pv,"app_main.c",0x571);
-	wdt_init(1);
+	wdt_init(true);
 	user_init();
 	ets_timer_disarm(&check_timeouts_timer);
 	ets_timer_arm_new(&check_timeouts_timer,lwip_timer_interval,1,1);
