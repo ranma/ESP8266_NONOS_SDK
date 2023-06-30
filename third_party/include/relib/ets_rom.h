@@ -98,6 +98,12 @@ uint32_t rtc_get_reset_reason(void);
 
 uint32_t Wait_SPI_Idle(SpiFlashChip *chip);
 SpiFlashOpResult SPIRead(uint32_t faddr, void *dst, size_t size);
+SpiFlashOpResult SPIWrite(uint32_t faddr, void *src, size_t size);
+SpiFlashOpResult SPIEraseSector(uint16_t sec);
+SpiFlashOpResult SPI_read_status(SpiFlashChip *chip, uint32_t *status);
+SpiFlashOpResult SPI_write_status(SpiFlashChip *chip, uint32_t status);
+SpiFlashOpResult SPI_write_enable(SpiFlashChip *chip);
+SpiFlashOpResult Enable_QMode(SpiFlashChip *chip);
 
 c_exception_handler_t _xtos_set_exception_handler(int cause, c_exception_handler_t fn);
 /* 0 on success, 1 on error (queue full) */

@@ -74,7 +74,14 @@ struct uart_regs {
 #define UART0 ((struct uart_regs *) 0x60000000)
 #define UART1 ((struct uart_regs *) 0x60000f00)
 
-#define SPI_CK_I_EDGE BIT(6)
+#define SPI_CMD_FLASH_RDID   BIT(28)
+#define SPI_CTRL_QIO_MODE    BIT(24)
+#define SPI_CTRL_DIO_MODE    BIT(23)
+#define SPI_CTRL_QOUT_MODE   BIT(20)
+#define SPI_CTRL_ENABLE_AHB  BIT(17)
+#define SPI_CTRL_DOUT_MODE   BIT(14)
+#define SPI_CTRL_FASTRD_MODE BIT(13)
+#define SPI_CK_I_EDGE        BIT(6)
 
 struct spi_regs {
 	REG32(CMD);          // 0x00
@@ -93,7 +100,7 @@ struct spi_regs {
 	REG32(SLAVE1);       // 0x34
 	REG32(SLAVE2);       // 0x38
 	REG32(SLAVE3);       // 0x3c
-	REG32(W[16]);        // 0x40 - 0x7c
+	REG32(DATA[16]);     // 0x40 - 0x7c
 	REG32(unused[0x1c]); // 0x80
 	REG32(EXT0);         // 0xf0
 	REG32(EXT1);         // 0xf4
@@ -265,6 +272,7 @@ static_assert(OFFSET_OF(struct bb_regs, reg574) == 0x574, "reg574 offset mismatc
 
 #define BB ((struct bb_regs *) 0x60009800)
 
+#define CACHE_READ_EN 0x100
 
 struct dport_regs {
 	volatile uint32_t NMI_INT_ENABLE;
