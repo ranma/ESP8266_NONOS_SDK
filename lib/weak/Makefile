@@ -63,7 +63,8 @@ REDEFINE_ETS_SYMS = \
 OBJ_REMOVE_libmain.a = mem_manager.o \
 	eagle_lwip_if.o \
 	ets_timer.o \
-	eagle_lib.o
+	eagle_lib.o \
+	app_partition.o
 
 OBJ_REMOVE_libpp.a = esf_buf.o
 
