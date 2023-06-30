@@ -23,6 +23,7 @@
 #include "relib/s/phy_init_ctrl.h"
 #include "relib/s/partition_item.h"
 #include "relib/s/spi_flash_header.h"
+#include "relib/s/rst_info.h"
 
 #define BOOT_CLK_FREQ   52000000
 #define NORMAL_CLK_FREQ 80000000
@@ -67,17 +68,6 @@ typedef struct __attribute__((packed)) {
 	uint8 sta_mac[6];
 } if_param_st;
 static_assert(sizeof(if_param_st) == 0x24, "if_param size mismatch");
-
-typedef struct {
-	uint32_t flag;
-	uint32_t exccause;
-	uint32_t epc1;
-	uint32_t epc2;
-	uint32_t epc3;
-	uint32_t excvaddr;
-	uint32_t depc;
-} rst_info_st;
-static_assert(sizeof(rst_info_st) == 0x1c, "rst_info size mismatch");
 
 typedef struct __attribute__((packed)) {
 	union {
@@ -630,9 +620,9 @@ relib_user_local_init(void)
 		else {
 			uVar6 = rtc_get_reset_reason();
 			if (uVar6 == 2) {
-				if (((rst_if.flag != 5) || (rst_if.epc1 != 0)) || (rst_if.excvaddr != 0)) {
+				if (((rst_if.reason != REASON_DEEP_SLEEP_AWAKE) || (rst_if.epc1 != 0)) || (rst_if.excvaddr != 0)) {
 					memset(&rst_if,0,0x1c);
-					rst_if.flag = 6;
+					rst_if.reason = REASON_EXT_SYS_RST;
 				}
 			}
 			else {
@@ -657,10 +647,10 @@ relib_user_local_init(void)
 	else {
 		bVar3 = true;
 	}
-	if (rst_if.flag != 5) {
+	if (rst_if.reason != REASON_DEEP_SLEEP_AWAKE) {
 		phy_afterwake_set_rfoption(1);
 	}
-	if ((rst_if.flag != 5) && (!bVar3)) {
+	if ((rst_if.reason != REASON_DEEP_SLEEP_AWAKE) && (!bVar3)) {
 		write_data_to_rtc(rf_cal_data);
 	}
 	if (phy_rf_data->esp_init.param_ver_id == '\x05') {
@@ -763,7 +753,7 @@ LAB_4022f98c:
 	os_printf_plus("rf[113] : %02x\n", phy_rf_data->esp_init.freq_offset);
 	os_printf_plus("rf[114] : %02x\n", phy_rf_data->esp_init._114);
 	if ((bVar3) &&
-		 (((rst_if.flag != 5 && (uVar6 = rtc_get_reset_reason(), uVar6 == 2)) ||
+		 (((rst_if.reason != REASON_DEEP_SLEEP_AWAKE && (uVar6 = rtc_get_reset_reason(), uVar6 == 2)) ||
 			(uVar6 = rtc_get_reset_reason(), uVar6 == 1)))) {
 		os_printf_plus("w_flash\n");
 		get_data_from_rtc(rf_cal_data);
@@ -783,7 +773,7 @@ LAB_4022f98c:
 		(pp_ver & 0xff00) >> 8, pp_ver & 0xff);
 	if ((g_ic.phy_function & 1) != 0) {
 		uint32_t freq_cal = RTCMEM->BACKUP[0x78/4];
-		if (rst_if.flag == 5) {
+		if (rst_if.reason == REASON_DEEP_SLEEP_AWAKE) {
 			TestStaFreqCalValInput = freq_cal >> 0x10;
 			chip_v6_set_chan_offset(1, TestStaFreqCalValInput);
 			TestStaFreqCalValDev = TestStaFreqCalValInput;

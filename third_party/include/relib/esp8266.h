@@ -360,6 +360,16 @@ static_assert(OFFSET_OF(struct wdev_timer_regs, RXSTART_TIME) == 0xfc, "RXSTART_
 
 #define WDEV_TIMER ((struct wdev_timer_regs *) 0x3ff21000)
 
+#define EFUSE_D0_IS_ESP8285           BIT(4)
+#define EFUSE_D1_VERSION_SHIFT        24
+#define EFUSE_D1_VERSION_MASK         (0xf << 24)
+#define EFUSE_D2_USE_TYPE2            BIT(15)
+#define EFUSE_D2_IS_24PINS            BIT(14)
+#define EFUSE_D2_4_GPIO_PAD           BIT(13)
+#define EFUSE_D2_IS_48BITS_MAC        BIT(12)
+#define EFUSE_D3_EMB_FLASH_SIZE_SHIFT 26
+#define EFUSE_D3_EMB_FLASH_SIZE_MASK  (0x3 << 26)
+
 struct efuse_regs {
 	uint32_t DATA[4];
 };

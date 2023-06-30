@@ -5,13 +5,9 @@
 
 #include "relib/esp8266.h"
 #include "relib/xtensa.h"
+#include "relib/relib.h"
 #include "relib/ets_rom.h"
 #include "relib/ets_timer.h"
-
-#define ARRAY_SIZE(a) (sizeof((a)) / sizeof(*(a)))
-
-/* Check if t1 is after t2 */
-#define TIME_AFTER(t1, t2) ((int)(t1 - t2) > 0)
 
 static ETSEvent rtcTimerEvtQ[4];
 

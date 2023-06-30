@@ -17,4 +17,9 @@
 	v; \
 })
 
+#define INTCLEAR(c) do { \
+	__asm__ __volatile__("wsr %0, INTCLEAR\n" :: "a"(c) :); \
+} while (0)
+
+
 #endif /* XTENSA_H */
