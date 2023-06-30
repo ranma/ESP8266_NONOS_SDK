@@ -21,6 +21,8 @@
 #include "relib/s/ieee80211com.h"
 #include "relib/s/wl_profile.h"
 #include "relib/s/phy_init_ctrl.h"
+#include "relib/s/partition_item.h"
+#include "relib/s/spi_flash_header.h"
 
 #define BOOT_CLK_FREQ   52000000
 #define NORMAL_CLK_FREQ 80000000
@@ -34,15 +36,6 @@
 #else
 #define DPRINTF(...)
 #endif
-
-typedef struct __attribute__((packed)) {
-	uint8_t id;               // = 0xE9
-	uint8_t number_segs;      // Number of segments
-	uint8_t spi_interface;    // SPI Flash Interface (0 = QIO, 1 = QOUT, 2 = DIO, 0x3 = DOUT)
-	uint8_t spi_freq: 4;      // Low four bits: 0 = 40MHz, 1= 26MHz, 2 = 20MHz, 0x3 = 80MHz
-	uint8_t flash_size: 4;    // High four bits: 0 = 512K, 1 = 256K, 2 = 1M, 3 = 2M, 4 = 4M, ...
-} spi_flash_header_st;
-static_assert(sizeof(spi_flash_header_st) == 0x4, "spi_flash_header_st size mismatch");
 
 typedef struct { // Sector flash addr flashchip->chip_size-0x1000
 	uint8_t bank;       // +00 = 0, 1 // WiFi config flash addr: 0 - flashchip->chip_size-0x3000 (0x7D000), 1 - flashchip->chip_size-0x2000
@@ -1139,12 +1132,12 @@ relib_user_start(void)
 	DPRINTF("  status_mask=%08x\n", flashchip->status_mask);
 
 	SPIRead(0, (void*)&flash_hdr, sizeof(flash_hdr));
-	DPRINTF("flash_hdr: id=%02x segs=%d spiif=%d freq=%d size=%d\n",
+	DPRINTF("flash_hdr: id=%02x segs=%d spiif=%d freq=%d map=%d\n",
 		flash_hdr.id,
 		flash_hdr.number_segs,
 		flash_hdr.spi_interface,
 		flash_hdr.spi_freq,
-		flash_hdr.flash_size);
+		flash_hdr.flash_map);
 
 	if (strap != 5 /* not SDIO boot */) {
 		if (flash_hdr.spi_freq < 3) {
@@ -1160,45 +1153,45 @@ relib_user_start(void)
 		flash_speed = 2;
 	}
 
-	switch(flash_hdr.flash_size) {
-	case 0:
+	switch(flash_hdr.flash_map) {
+	case FLASH_SIZE_4M_MAP_256_256:
 	default:
 		/* 512KiB (256+256) */
 		flash_size = 0x80000;
 		break;
-	case 1:
+	case FLASH_SIZE_2M:
 		/* 256KiB */
 		flash_size = 0x40000;
 		break;
-	case 2:
+	case FLASH_SIZE_8M_MAP_512_512:
 		/* 1MiB (512+512) */
 		flash_size = 0x100000;
 		break;
-	case 3:
+	case FLASH_SIZE_16M_MAP_512_512:
 		/* 2MiB (512+512) */
 		flash_size = 0x200000;
 		break;
-	case 4:
+	case FLASH_SIZE_32M_MAP_512_512:
 		/* 4MiB (512+512) */
 		flash_size = 0x400000;
 		break;
-	case 5:
+	case FLASH_SIZE_16M_MAP_1024_1024:
 		/* 2MiB (1024+1024) */
 		flash_size = 0x200000;
 		break;
-	case 6:
+	case FLASH_SIZE_32M_MAP_1024_1024:
 		/* 4MiB (1024+1024) */
 		flash_size = 0x400000;
 		break;
-	case 7:
+	case FLASH_SIZE_32M_MAP_2048_2048:
 		/* 4MiB (2048+2048)? */
 		flash_size = 0x400000;
 		break;
-	case 8:
+	case FLASH_SIZE_64M_MAP_1024_1024:
 		/* 8MiB */
 		flash_size = 0x800000;
 		break;
-	case 9:
+	case FLASH_SIZE_128M_MAP_1024_1024:
 		/* 16MiB */
 		flash_size = 0x1000000;
 		break;
@@ -1243,10 +1236,10 @@ relib_user_start(void)
 		wscfg.boot_hdr_param.boot.user_bin_addr[2]);
 
 	bool use_bin = userbin_check(&wscfg.boot_hdr_param.boot);
-	if (flash_hdr.flash_size == 5 ||
-	    flash_hdr.flash_size == 6 ||
-	    flash_hdr.flash_size == 8 ||
-	    flash_hdr.flash_size == 9) {
+	if (flash_hdr.flash_map == FLASH_SIZE_16M_MAP_1024_1024 ||
+	    flash_hdr.flash_map == FLASH_SIZE_32M_MAP_1024_1024 ||
+	    flash_hdr.flash_map == FLASH_SIZE_64M_MAP_1024_1024 ||
+	    flash_hdr.flash_map == FLASH_SIZE_128M_MAP_1024_1024) {
 		if (wscfg.boot_hdr_param.boot_2.version < 4 ||
 		    wscfg.boot_hdr_param.boot_2.version >= 32) {
 			ets_printf("need boot 1.4+\n");
