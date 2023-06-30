@@ -565,6 +565,23 @@ chip_init(esp_init_data_default_st *init_data, uint8_t *macaddr)
 	wDevEnableRx();
 }
 
+int ICACHE_FLASH_ATTR
+flash_data_check(uint8_t *data)
+{
+	uint32_t sum = 0;
+	for (int i = 0; i < 24; i++, data+= 4) {
+		sum += data[0] | (data[1]<<8) | (data[2]<<16) | (data[3]<<24);
+	}
+	sum += ((EFUSE->DATA[2] & 0xF000)<<16) | (EFUSE->DATA[1] & 0xfffffff);
+	sum += (EFUSE->DATA[0] & 0xff000000) | (EFUSE->DATA[3] & 0xffffff);
+	sum ^= 0xFFFFFFFF;
+
+	uint32_t csum = data[8] | (data[9]<<8) | (data[10]<<16) | (data[11]<<24);
+	if (sum != csum) {
+		return 1;
+	}
+	return 0;
+}
 
 #if 1
 void ICACHE_FLASH_ATTR
