@@ -416,6 +416,44 @@ init_bss_data(void)
 	ets_bzero(&_bss_start, &_bss_end - &_bss_start);
 }
 
+uint8_t ICACHE_FLASH_ATTR
+esp_crc8(uint8_t *data, int len)
+{
+	/* Dallas/Maxim-style CRC8, with init value 0 and poly 0x31 * (X^8+X^5+X^4+X^0) */
+	uint32_t crc = 0;
+
+	while (len-- > 0) {
+		crc ^= *data++;
+#if 0
+		/* straight-forward looping impl */
+		for (int i = 0; i < 8; i++) {
+			if (crc & 0x80) {
+				crc = (crc << 1) ^ 0x31;
+			} else {
+				crc <<= 1;
+			}
+		};
+#else
+		/* unrolled impl */
+		uint32_t tmp = crc << 3;
+		crc ^= tmp;
+		tmp <<= 1;
+		crc ^= tmp;
+		tmp <<= 2;
+		crc = crc ^ tmp;
+
+		crc &= 0xff;
+
+		tmp = crc >> 4;
+		crc ^= tmp;
+		tmp >>= 1;
+		crc ^= tmp;
+#endif
+	}
+	return crc;
+}
+
+
 int ICACHE_FLASH_ATTR
 relib_read_macaddr_from_otp(uint8_t *mac) /* impl. from RTOS SDK */
 {
@@ -918,6 +956,7 @@ register_chipv6_phy(esp_init_data_default_st *init_data)
 		local_40 = chip6_sleep_params._48;
 	}
 	set_crystal_uart();
+	relib_reset_uart_baud(NORMAL_CLK_FREQ);
 	ant_switch_init();
 	if (!initdone) {
 		phy_gpio_cfg();
