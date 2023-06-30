@@ -30,7 +30,7 @@ endif
 #
 #DEFINES +=
 #CCFLAGS +=
-CCFLAGS += -std=gnu11
+CCFLAGS += -std=gnu11 -Werror
 ifeq ($(LIBLWIP_VER), 2)
 DEFINES += -DLIBLWIP_VER=2
 DDEFINES += -DLIBLWIP_VER=2

@@ -124,6 +124,8 @@ task.h is included from an application file. */
 #include "relib/ets_rom.h"
 #include "relib/relib.h"
 
+void system_soft_wdt_feed(void);
+
 #undef MPU_WRAPPERS_INCLUDED_FROM_API_FILE
 
 #define mtCOVERAGE_TEST_MARKER()

@@ -873,7 +873,7 @@ int rtc_mem_check(int);
 int rtc_mem_backup(uint8_t *mem_start, uint8_t *mem_end, uint32_t rtc_ram_off);
 int rtc_mem_recovery(uint8_t *mem_start, uint8_t *mem_end, uint32_t rtc_ram_off);
 void reduce_current_init(void);
-void register_phy_ops(phy_ops_st *phy_ops);
+void register_phy_ops(const phy_ops_st *phy_ops);
 void chip_v6_set_chan(int chan);
 void sleep_set_rxpbus(int arg);
 void phy_version_print(void);
