@@ -624,6 +624,70 @@ wdt_init(bool hw_wdt_enable)
 	pp_soft_wdt_init();
 }
 
+void wifi_softap_set_default_ssid(void);
+void wifi_station_set_default_hostname(uint8_t *mac);
+void wDev_Set_Beacon_Int(uint32_t beacon_int);
+bool system_param_save_with_protect(uint16_t start_sec, void *param, uint16_t len);
+
+void ICACHE_FLASH_ATTR
+user_init_default_profile(void)
+{
+	bool bVar1;
+	uint32_t uVar2;
+	
+	bVar1 = g_ic.ic_profile.opmode == 0xff;
+	if (bVar1) {
+		g_ic.ic_profile.opmode = '\x02';
+	}
+	wifi_softap_set_default_ssid();
+	wifi_station_set_default_hostname((char *)info.sta_mac);
+	if ((0xd < g_ic.ic_profile.softap.channel) || (g_ic.ic_profile.softap.channel == '\0')) {
+		g_ic.ic_profile.softap.channel = '\x01';
+	}
+	if ((60000 < g_ic.ic_profile.softap_beacon_interval) ||
+		 (g_ic.ic_profile.softap_beacon_interval < 100)) {
+		g_ic.ic_profile.softap_beacon_interval = 100;
+	}
+	uVar2 = g_ic.ic_profile.softap_beacon_interval / 100;
+	wDev_Set_Beacon_Int((uVar2 & 0xffff) * 0x19000);
+	if ((4 < g_ic.ic_profile.softap.authmode) || (g_ic.ic_profile.softap.authmode == '\x01')) {
+		g_ic.ic_profile.softap.authmode = '\0';
+		bzero(g_ic.ic_profile.softap.password,0x40);
+	}
+	if (1 < g_ic.ic_profile.softap.ssid_hidden) {
+		g_ic.ic_profile.softap.ssid_hidden = '\0';
+	}
+	if (8 < g_ic.ic_profile.softap.max_connection) {
+		g_ic.ic_profile.softap.max_connection = '\x04';
+	}
+	if (g_ic.ic_profile.sta.ssid.len == -1) {
+		bzero(&g_ic.ic_profile.sta,0x24);
+		bzero(g_ic.ic_profile.sta.password,0x40);
+	}
+	g_ic.ic_profile.wps_status = WPS_STATUS_DISABLE;
+	g_ic.ic_profile.wps_type = WPS_TYPE_DISABLE;
+	g_ic.ic_profile.led.open_flag = '\0';
+	if (true < g_ic.ic_profile.sta.bssid_set) {
+		g_ic.ic_profile.sta.bssid_set = false;
+	}
+	if (5 < g_ic.ic_profile.ap_change_param.ap_number) {
+		g_ic.ic_profile.ap_change_param.ap_number = '\x01';
+	}
+	if ((IEEE80211_MODE_11NG < g_ic.ic_profile.phyMode) ||
+		 (g_ic.ic_profile.phyMode == IEEE80211_MODE_AUTO)) {
+		g_ic.ic_profile.phyMode = IEEE80211_MODE_11NG;
+	}
+	if (g_ic.ic_profile.minimum_rssi_in_fast_scan == -1) {
+		g_ic.ic_profile.minimum_rssi_in_fast_scan = -0x7f;
+	}
+	if (g_ic.ic_profile.minimum_auth_mode_in_fast_scan == 0xff) {
+		g_ic.ic_profile.minimum_auth_mode_in_fast_scan = '\0';
+	}
+	if (bVar1) {
+		system_param_save_with_protect((uint16)system_param_sector_start,&g_ic.ic_profile,0x4a4);
+	}
+}
+
 #if 1
 void ICACHE_FLASH_ATTR
 relib_user_local_init(void)
