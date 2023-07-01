@@ -24,6 +24,7 @@
 #include "relib/s/partition_item.h"
 #include "relib/s/spi_flash_header.h"
 #include "relib/s/rst_info.h"
+#include "relib/s/if_param.h"
 
 #define BOOT_CLK_FREQ   52000000
 #define NORMAL_CLK_FREQ 80000000
@@ -48,26 +49,6 @@ typedef struct { // Sector flash addr flashchip->chip_size-0x1000
 	uint32_t magic2;    /* 0xAA55AA55 to mark the struct as valid (ensure all bytes of the struct were written to flash) */
 } wifi_flash_header_st;
 static_assert(sizeof(wifi_flash_header_st) == 0x20, "wifi_flash_header size mismatch");
-
-typedef struct __attribute__((packed)) {
-	uint32_t addr;
-} ip_addr_st;
-static_assert(sizeof(ip_addr_st) == 4, "ip_addr size mismatch");
-
-typedef struct __attribute__((packed)) {
-	ip_addr_st ip;
-	ip_addr_st netmask;
-	ip_addr_st gw;
-} ip_info_st;
-static_assert(sizeof(ip_info_st) == 12, "ip_info size mismatch");
-
-typedef struct __attribute__((packed)) {
-	ip_info_st softap_info;
-	ip_info_st sta_info;
-	uint8 softap_mac[6];
-	uint8 sta_mac[6];
-} if_param_st;
-static_assert(sizeof(if_param_st) == 0x24, "if_param size mismatch");
 
 typedef struct __attribute__((packed)) {
 	union {
@@ -416,109 +397,6 @@ init_bss_data(void)
 	ets_bzero(&_bss_start, &_bss_end - &_bss_start);
 }
 
-uint8_t ICACHE_FLASH_ATTR
-esp_crc8(uint8_t *data, int len)
-{
-	/* Dallas/Maxim-style CRC8, with init value 0 and poly 0x31 * (X^8+X^5+X^4+X^0) */
-	uint32_t crc = 0;
-
-	while (len-- > 0) {
-		crc ^= *data++;
-#if 0
-		/* straight-forward looping impl */
-		for (int i = 0; i < 8; i++) {
-			if (crc & 0x80) {
-				crc = (crc << 1) ^ 0x31;
-			} else {
-				crc <<= 1;
-			}
-		};
-#else
-		/* unrolled impl */
-		uint32_t tmp = crc << 3;
-		crc ^= tmp;
-		tmp <<= 1;
-		crc ^= tmp;
-		tmp <<= 2;
-		crc = crc ^ tmp;
-
-		crc &= 0xff;
-
-		tmp = crc >> 4;
-		crc ^= tmp;
-		tmp >>= 1;
-		crc ^= tmp;
-#endif
-	}
-	return crc;
-}
-
-
-int ICACHE_FLASH_ATTR
-relib_read_macaddr_from_otp(uint8_t *mac) /* impl. from RTOS SDK */
-{
-	uint32_t efuse[4];
-
-	uint8_t efuse_crc = 0;
-	uint8_t calc_crc = 0;
-	uint8_t version;
-	uint8_t use_default = 1;
-
-	efuse[0] = EFUSE->DATA[0];
-	efuse[1] = EFUSE->DATA[1];
-	efuse[2] = EFUSE->DATA[2];
-	efuse[3] = EFUSE->DATA[3];
-
-	mac[3] = efuse[1] >> 8;
-	mac[4] = efuse[1];
-	mac[5] = efuse[0] >> 24;
-
-	if (efuse[2] & EFUSE_IS_48BITS_MAC) {
-		uint8_t tmp_mac[4];
-
-		mac[0] = efuse[3] >> 16;
-		mac[1] = efuse[3] >> 8;
-		mac[2] = efuse[3];
-
-		use_default = 0;
-
-		tmp_mac[0] = mac[2];
-		tmp_mac[1] = mac[1];
-		tmp_mac[2] = mac[0];
-
-		efuse_crc = efuse[2] >> 24;
-		calc_crc = esp_crc8(tmp_mac, 3);
-
-		if (efuse_crc != calc_crc)
-			use_default = 1;
-
-		if (!use_default) {
-			version = (efuse[1] >> EFUSE_VERSION_S) & EFUSE_VERSION_V;
-
-			if (version == EFUSE_VERSION_1 || version == EFUSE_VERSION_2) {
-				tmp_mac[0] = mac[5];
-				tmp_mac[1] = mac[4];
-				tmp_mac[2] = mac[3];
-				tmp_mac[3] = efuse[1] >> 16;
-
-				efuse_crc = efuse[0] >> 16;
-				calc_crc = esp_crc8(tmp_mac, 4);
-
-				if (efuse_crc != calc_crc)
-					use_default = 1;
-			}
-		}
-	}
-
-	if (use_default) {
-		mac[0] = 0x18;
-		mac[1] = 0xFE;
-		mac[2] = 0x34;
-	}
-
-	return 0;
-}
-
 int register_chipv6_phy(esp_init_data_default_st *init_data);
 void phy_disable_agc(void);
 void ieee80211_phy_init(ieee80211_phymode_t phyMode);
@@ -566,127 +444,10 @@ chip_init(esp_init_data_default_st *init_data, uint8_t *macaddr)
 	wDevEnableRx();
 }
 
-int ICACHE_FLASH_ATTR
-flash_data_check(uint8_t *data)
-{
-	uint32_t sum = 0;
-	for (int i = 0; i < 24; i++, data+= 4) {
-		sum += data[0] | (data[1]<<8) | (data[2]<<16) | (data[3]<<24);
-	}
-	sum += ((EFUSE->DATA[2] & 0xF000)<<16) | (EFUSE->DATA[1] & 0xfffffff);
-	sum += (EFUSE->DATA[0] & 0xff000000) | (EFUSE->DATA[3] & 0xffffff);
-	sum ^= 0xFFFFFFFF;
-
-	uint32_t csum = data[8] | (data[9]<<8) | (data[10]<<16) | (data[11]<<24);
-	if (sum != csum) {
-		return 1;
-	}
-	return 0;
-}
-
-void
-wdt_feed(void *unused_arg)
-{
-#if 0
-	/* Original code fills in rst_info, only to overwrite it using system_rtc_mem_read... */
-	rst_info_st rst_info;
-	rst_info.exccause = *in_EXCCAUSE;
-	rst_info.epc1 = *in_EPC1;
-	rst_info.epc2 = *in_EPC2;
-	rst_info.epc3 = *in_EPC3;
-	rst_info.excvaddr = *in_EXCVADDR;
-	rst_info.depc = *in_DEPC;
-	system_rtc_mem_read(0, &rst_info, 0x1c);
-	RTC->STORE[0] = REASON_WDT_RST;
-	rst_info.reason = REASON_WDT_RST;
-	system_rtc_mem_write(0, &rst_info, 0x1c);
-#else
-	rst_info_st *rst_info = (rst_info_st*)&RTCMEM->SYSTEM[0];
-	RTC->STORE[0] = REASON_WDT_RST;
-	rst_info->reason = REASON_WDT_RST;
-#endif
-}
-
-void ICACHE_FLASH_ATTR
-wdt_init(bool hw_wdt_enable)
-{
-	if (hw_wdt_enable) {
-		WDT->CTL &= ~1;
-		ets_isr_attach(8, wdt_feed, 0);
-		DPORT->EDGE_INT_ENABLE |= 1;
-		WDT->OP = 0xb;
-		WDT->OP_ND = 0xd;
-		WDT->CTL |= 0x38;
-		WDT->CTL &= ~6;
-		WDT->CTL |= 1;
-		ets_isr_unmask(0x100);
-	}
-	pp_soft_wdt_init();
-}
-
 void wifi_softap_set_default_ssid(void);
 void wifi_station_set_default_hostname(uint8_t *mac);
 void wDev_Set_Beacon_Int(uint32_t beacon_int);
 bool system_param_save_with_protect(uint16_t start_sec, void *param, uint16_t len);
-
-void ICACHE_FLASH_ATTR
-user_init_default_profile(void)
-{
-	bool bVar1;
-	uint32_t uVar2;
-	
-	bVar1 = g_ic.ic_profile.opmode == 0xff;
-	if (bVar1) {
-		g_ic.ic_profile.opmode = '\x02';
-	}
-	wifi_softap_set_default_ssid();
-	wifi_station_set_default_hostname((char *)info.sta_mac);
-	if ((0xd < g_ic.ic_profile.softap.channel) || (g_ic.ic_profile.softap.channel == '\0')) {
-		g_ic.ic_profile.softap.channel = '\x01';
-	}
-	if ((60000 < g_ic.ic_profile.softap_beacon_interval) ||
-		 (g_ic.ic_profile.softap_beacon_interval < 100)) {
-		g_ic.ic_profile.softap_beacon_interval = 100;
-	}
-	uVar2 = g_ic.ic_profile.softap_beacon_interval / 100;
-	wDev_Set_Beacon_Int((uVar2 & 0xffff) * 0x19000);
-	if ((4 < g_ic.ic_profile.softap.authmode) || (g_ic.ic_profile.softap.authmode == '\x01')) {
-		g_ic.ic_profile.softap.authmode = '\0';
-		bzero(g_ic.ic_profile.softap.password,0x40);
-	}
-	if (1 < g_ic.ic_profile.softap.ssid_hidden) {
-		g_ic.ic_profile.softap.ssid_hidden = '\0';
-	}
-	if (8 < g_ic.ic_profile.softap.max_connection) {
-		g_ic.ic_profile.softap.max_connection = '\x04';
-	}
-	if (g_ic.ic_profile.sta.ssid.len == -1) {
-		bzero(&g_ic.ic_profile.sta,0x24);
-		bzero(g_ic.ic_profile.sta.password,0x40);
-	}
-	g_ic.ic_profile.wps_status = WPS_STATUS_DISABLE;
-	g_ic.ic_profile.wps_type = WPS_TYPE_DISABLE;
-	g_ic.ic_profile.led.open_flag = '\0';
-	if (true < g_ic.ic_profile.sta.bssid_set) {
-		g_ic.ic_profile.sta.bssid_set = false;
-	}
-	if (5 < g_ic.ic_profile.ap_change_param.ap_number) {
-		g_ic.ic_profile.ap_change_param.ap_number = '\x01';
-	}
-	if ((IEEE80211_MODE_11NG < g_ic.ic_profile.phyMode) ||
-		 (g_ic.ic_profile.phyMode == IEEE80211_MODE_AUTO)) {
-		g_ic.ic_profile.phyMode = IEEE80211_MODE_11NG;
-	}
-	if (g_ic.ic_profile.minimum_rssi_in_fast_scan == -1) {
-		g_ic.ic_profile.minimum_rssi_in_fast_scan = -0x7f;
-	}
-	if (g_ic.ic_profile.minimum_auth_mode_in_fast_scan == 0xff) {
-		g_ic.ic_profile.minimum_auth_mode_in_fast_scan = '\0';
-	}
-	if (bVar1) {
-		system_param_save_with_protect((uint16)system_param_sector_start,&g_ic.ic_profile,0x4a4);
-	}
-}
 
 #if 1
 void ICACHE_FLASH_ATTR

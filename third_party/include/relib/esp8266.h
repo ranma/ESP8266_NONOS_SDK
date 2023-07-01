@@ -236,7 +236,7 @@ struct rtc_mem {
 
 struct iomux_regs {
 	/* CONF bit 8: SPI0_CLK_EQU_SYS_CLK */
-	/* CONF bit 9: SPI:_CLK_EQU_SYS_CLK */
+	/* CONF bit 9: SPI1_CLK_EQU_SYS_CLK */
 	volatile uint32_t CONF;
 	union {
 		volatile uint32_t MUX[16];
@@ -275,18 +275,18 @@ static_assert(OFFSET_OF(struct bb_regs, reg574) == 0x574, "reg574 offset mismatc
 #define CACHE_READ_EN 0x100
 
 struct dport_regs {
-	volatile uint32_t NMI_INT_ENABLE;
-	volatile uint32_t EDGE_INT_ENABLE;
-	volatile uint32_t unknown_0x8;
-	volatile uint32_t CACHE_FLASH_CTRL;
-	volatile uint32_t unknown_0x10;
-	volatile uint32_t CTL;
+	volatile uint32_t NMI_INT_ENABLE;   // 0x000
+	volatile uint32_t EDGE_INT_ENABLE;  // 0x004
+	volatile uint32_t unknown_0x8;      // 0x008
+	volatile uint32_t CACHE_FLASH_CTRL; // 0x00c
+	volatile uint32_t unknown_0x10;     // 0x010
+	volatile uint32_t CTL;              // 0x014
 	/* void clockgate_watchdog(flg) { if(flg) 0x3FF00018 &= 0x77 else 0x3FF00018 |= 8; }
 	   system_restart_core: _DAT_3ff00018 = >_DAT_3ff00018 & 0xffff8aff; */
-	volatile uint32_t CLOCK_GATE;  /* probably */
-	volatile uint32_t unknown_0x1c;
-	volatile uint32_t INT_STATUS;
-	volatile uint32_t SPI_CACHE_CTL;
+	volatile uint32_t CLOCK_GATE;       // 0x018 /* probably */
+	volatile uint32_t unknown_0x1c;     // 0x01c
+	volatile uint32_t INT_STATUS;       // 0x020
+	volatile uint32_t SPI_CACHE_CTL;    // 0x024
 	/*
 	#define IOSWAPU   0 //Swaps UART
 	#define IOSWAPS   1 //Swaps SPI
@@ -296,8 +296,8 @@ struct dport_regs {
 	#define IOSWAP2HS 6 //Sets Two SPI Masters on HSPI
 	#define IOSWAP2CS 7 //Sets Two SPI Masters on CSPI
 	*/
-	volatile uint32_t PERI_IO_SWAP;
-	volatile uint32_t SLC_TX_DESC_DEBUG_REG;
+	volatile uint32_t PERI_IO_SWAP;     // 0x028
+	volatile uint32_t SLC_TX_DESC_DEBUG_REG;  // 0x02c
 };
 
 #define DPORT ((struct dport_regs *) 0x3ff00000)

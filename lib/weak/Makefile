@@ -65,7 +65,8 @@ OBJ_REMOVE_libmain.a = mem_manager.o \
 	ets_timer.o \
 	eagle_lib.o \
 	app_partition.o \
-	spi_flash.o
+	spi_flash.o \
+	app_main.o
 
 OBJ_REMOVE_libpp.a = esf_buf.o
 
