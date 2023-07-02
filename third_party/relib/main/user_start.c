@@ -23,6 +23,7 @@
 #include "relib/s/phy_init_ctrl.h"
 #include "relib/s/partition_item.h"
 #include "relib/s/spi_flash_header.h"
+#include "relib/s/wifi_flash_header.h"
 #include "relib/s/rst_info.h"
 #include "relib/s/if_param.h"
 
@@ -38,17 +39,6 @@
 #else
 #define DPRINTF(...)
 #endif
-
-typedef struct { // Sector flash addr flashchip->chip_size-0x1000
-	uint8_t bank;       // +00 = 0, 1 // WiFi config flash addr: 0 - flashchip->chip_size-0x3000 (0x7D000), 1 - flashchip->chip_size-0x2000
-	uint8_t unknown[3];
-	uint32_t magic1;    /* 0x55AA55AA to mark the struct as valid (0xffffffff if sector is erased) */
-	uint32_t wr_cnt;    /* number of erase/write cycles so far */
-	uint32_t chklen[2]; /* number of wl_profile_s bytes to checksum over */
-	uint32_t chksum[2]; /* checksum of the saved wl_profile_s */
-	uint32_t magic2;    /* 0xAA55AA55 to mark the struct as valid (ensure all bytes of the struct were written to flash) */
-} wifi_flash_header_st;
-static_assert(sizeof(wifi_flash_header_st) == 0x20, "wifi_flash_header size mismatch");
 
 typedef struct __attribute__((packed)) {
 	union {
@@ -76,7 +66,7 @@ bool system_rtc_mem_write(uint8_t des_addr, const void *src_addr, uint16_t save_
 int flash_data_check(uint8_t *src);
 int phy_check_data_table(void * gdctbl, int x, int flg);
 int read_macaddr_from_otp(uint8_t *mac);
-int system_param_sector_start;
+extern int system_param_sector_start;
 int user_iram_memory_is_enabled(void);
 int wifi_mode_set(int mode);
 int wifi_station_start(void);

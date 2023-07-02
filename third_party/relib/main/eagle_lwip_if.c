@@ -12,28 +12,10 @@
 #include "lwip/pbuf.h"
 
 #include "relib/relib.h"
+#include "relib/s/ip_info.h"
+#include "relib/s/netif.h"
 #include "relib/s/ieee80211_conn.h"
 #include "relib/s/ieee80211com.h"
-
-#if LIBLWIP_VER == 2
-struct ip_addr {
-	ip4_addr_t addr;
-};
-
-struct ip_info {
-	ip4_addr_t ip;
-	ip4_addr_t netmask;
-	ip4_addr_t gw;
-};
-#define IP_ADDR_T const ip4_addr_t
-#define IPSTR "%d.%d.%d.%d"
-#define IP2STR(ipaddr) ip4_addr1_16(ipaddr), \
-    ip4_addr2_16(ipaddr), \
-    ip4_addr3_16(ipaddr), \
-    ip4_addr4_16(ipaddr)
-#else
-#define IP_ADDR_T ip_addr_t
-#endif
 
 #include "lwip/app/dhcpserver.h"
 
@@ -49,8 +31,6 @@ enum dhcp_status {
 	DHCP_STOPPED,
 	DHCP_STARTED
 };
-
-typedef struct ip_info ip_info_st;
 
 err_t etharp_output(struct netif *netif, struct pbuf *q, IP_ADDR_T *ipaddr); /* netif_output_fn */
 err_t ethernet_input(struct pbuf *p, struct netif *netif);

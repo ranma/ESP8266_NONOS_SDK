@@ -1,7 +1,7 @@
 #ifndef RELIB_BOOT_HDR_PARAM_H
 #define RELIB_BOOT_HDR_PARAM_H
 
-typedef struct __attribute__((packed)) {
+struct boot_hdr_param {
 	union {
 		struct boot_hdr_2 {
 			char use_bin:4;
@@ -24,7 +24,9 @@ typedef struct __attribute__((packed)) {
 			char user_bin_addr[3];
 		} boot;
 	};
-} boot_hdr_param_st;
+} __attribute__((packed));
+
+typedef struct boot_hdr_param boot_hdr_param_st;
 static_assert(sizeof(boot_hdr_param_st) == 8, "boot_hdr_param size mismatch");
 
 #endif /* RELIB_BOOT_HDR_PARAM_H */

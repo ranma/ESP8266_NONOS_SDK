@@ -4,6 +4,9 @@
 #include "relib/s/boot_hdr_param.h"
 #include "relib/s/ieee80211_ssid.h"
 
+#ifdef __USER_INTERFACE_H__
+typedef WPS_TYPE_t wps_type_t;
+#else
 typedef enum wps_type {
     WPS_TYPE_DISABLE=0,
     WPS_TYPE_E_PBC=1,
@@ -16,6 +19,7 @@ typedef enum wps_type {
     WPS_TYPE_R_MAX=8,
     WPS_TYPE_ALL_MAX=9
 } wps_type_t;
+#endif
 
 typedef enum wps_status {
     WPS_STATUS_DISABLE=0,
@@ -74,6 +78,23 @@ struct ap_switch_info {
 };
 typedef struct ap_switch_info ap_switch_info_st;
 
+struct ieee80211_ap_info {
+	struct ieee80211_ssid ssid;
+	uint8_t password[64];
+};
+typedef struct ieee80211_ap_info ieee80211_ap_info_st;
+
+struct ieee80211_ap_info_2 {
+	bool bssid_set;
+	uint8_t bssid[6];
+};
+typedef struct ieee80211_ap_info_2 ieee80211_ap_info_2_st;
+
+struct ieee80211_ap_info_3 {
+	uint8_t pmk[32];
+};
+typedef struct ieee80211_ap_info_3 ieee80211_ap_info_3_st;
+
 struct wl_profile {
 	/* shallow struct def to avoid pulling in all the other struct members */
 	union {
@@ -99,8 +120,20 @@ struct wl_profile {
 			ap_switch_info_st ap_change_param;
 		};
 		struct {
+			uint8_t pad_320[320];
+			ieee80211_ap_info_st save_ap_info[5];
+		};
+		struct {
+			uint8_t pad_832[832];
+			uint8_t auto_connect;
+		};
+		struct {
 			uint8_t pad_836[836];
 			ieee80211_phymode_t phyMode;
+		};
+		struct {
+			uint8_t pad_840[840];
+			ieee80211_ap_info_2_st save_ap_info_2[5];
 		};
 		struct {
 			uint8_t pad_876[876];
@@ -115,6 +148,10 @@ struct wl_profile {
 			wps_status_t wps_status;
 		};
 		struct {
+			uint8_t pad_996[996];
+			ieee80211_ap_info_3_st pmk_info[5];
+		};
+		struct {
 			uint8_t pad_1170[1170];
 			uint8_t mac_bakup[6];
 		};
@@ -122,6 +159,12 @@ struct wl_profile {
 			uint8_t pad_1176[1176];
 			int8_t minimum_rssi_in_fast_scan;
 			uint8_t minimum_auth_mode_in_fast_scan;
+			uint8_t sta_open_and_wep_mode_disable;
+		};
+		struct {
+			uint8_t pad_1179[1179];
+			uint8_t save_ap_channel_info[5];
+			bool all_channel_scan;
 		};
 	};
 } __attribute__((packed));

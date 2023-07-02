@@ -93,6 +93,7 @@ void ets_install_putc1(void (*p)(char c));
 void ets_printf(char*, ...);
 typedef void (*vprintf_putc_fn)(char c);
 int ets_vprintf(const vprintf_putc_fn putc_fn, const char *format, va_list ap);
+void ets_write_char(char c);
 
 uint32_t rtc_get_reset_reason(void);
 

@@ -229,7 +229,13 @@ struct i2c_sar_regs {
 
 struct rtc_mem {
 	REG32(BACKUP[64]); // 0x000, 256 bytes */
-	REG32(SYSTEM[64]); // 0x100, 256 bytes */
+	union {
+		REG32(SYSTEM[64]); // 0x100, 256 bytes */
+		struct {
+			uint8_t padf4[0xf4];
+			uint32_t SYSTEM_CHANCFG; // 0x1f4  bit16: flag, bit0..7: channel
+		};
+	};
 	REG32(USER[128]);  // 0x200, 512 bytes */
 };
 #define RTCMEM ((struct rtc_mem *) 0x60001000)
