@@ -707,6 +707,7 @@ LAB_4022f98c:
 
 	wifi_mode_set(g_ic.ic_profile.opmode);
 	if ((uVar4 == '\x01') || (uVar4 == '\x03')) {
+		os_printf_plus("wifi_station_start: if0=%p\n", g_ic.ic_if0_conn);
 		wifi_station_start();
 	}
 	if (uVar4 == '\x02') {

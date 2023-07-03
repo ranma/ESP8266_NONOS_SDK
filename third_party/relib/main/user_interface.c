@@ -207,7 +207,7 @@ bool wifi_station_disconnect(void);
 bool wifi_station_connect(void);
 static bool wifi_station_set_config_local(station_config_st *config, bool current);
 void system_restart_local(void);
-static bool wifi_set_opmode_local(uint8_t new_opemode, uint8_t current_opmode);
+static bool wifi_set_opmode_local(uint8_t new_opmode, bool current);
 static bool wifi_softap_set_config_local(softap_config_st *config, bool current);
 
 enum sleep_fn_idx {
@@ -443,6 +443,7 @@ bool wifi_station_get_config_local(station_config_st *config, uint8_t current)
 bool ICACHE_FLASH_ATTR
 wifi_station_get_config(station_config_st *config)
 {
+	DPRINTF("wifi_station_get_config(%p)\n", config);
 	return wifi_station_get_config_local(config,'\x01');
 }
 
@@ -487,7 +488,8 @@ wifi_station_set_config_local_2(wl_profile_st *profile,station_config_st *config
 	int8 iVar3;
 	size_t sVar4;
 	int iVar5;
-	
+
+	DPRINTF("wifi_station_set_config_local_2\n");
 	(profile->ap_change_param).ap_index = ap_index;
 	sVar4 = strlen((char *)config);
 	sVar2 = 0x20;
@@ -966,6 +968,7 @@ wifi_softap_set_default_ssid(void)
 int hexstr2bin(char *hex,uint8_t *buf,int len);
 bool ieee80211_regdomain_chan_in_range(uint8_t chan);
 uint8_t ieee80211_regdomain_min_chan(void);
+uint8_t ieee80211_regdomain_max_chan(void);
 void wDev_Set_Beacon_Int(uint32_t beacon_int);
 void system_soft_wdt_stop(void);
 void system_soft_wdt_restart(void);
@@ -1394,16 +1397,21 @@ wifi_set_opmode_local_2(uint8_t opmode)
 		opmode = 2;
 	}
 	if ((opmode == 1) || (opmode == 0)) {
+		DPRINTF("wifi_softap_stop\n");
 		wifi_softap_stop('\0');
 	}
 	if ((opmode == 2) || (opmode == 0)) {
+		DPRINTF("wifi_station_stop\n");
 		wifi_station_stop();
 	}
+	DPRINTF("wifi_mode_set(%d)\n", opmode);
 	wifi_mode_set(opmode);
 	if ((opmode == 1) || (opmode == 3)) {
+		DPRINTF("wifi_station_start: if0=%p\n", g_ic.ic_if0_conn);
 		wifi_station_start();
 	}
 	if ((opmode == 2) || (opmode == 3)) {
+		DPRINTF("wifi_softap_start\n");
 		wifi_softap_start(0);
 	}
 	if (opmode == 1) {
@@ -1417,26 +1425,30 @@ void fpm_open(void);
 int8_t wifi_fpm_do_sleep(uint32_t sleep_time_in_us);
 
 static bool ICACHE_FLASH_ATTR
-wifi_set_opmode_local(uint8_t new_opmode, uint8_t current_opmode)
+wifi_set_opmode_local(uint8_t new_opmode, bool current)
 {
 	uint8_t auto_sleep_flag;
 	bool res;
 	int sleepval;
 	wl_profile_st *wl_profile;
 	System_Event_st *sev;
-	uint8_t _current_opmode;
+	uint8_t _current;
 	uint8_t _new_opmode;
-	
+	DPRINTF("wifi_set_opmode_local(mode=%d -> %d, current=%d)\n",
+		new_opmode,
+		g_ic.ic_profile.opmode,
+		current);
 	if ((new_opmode < 4) && (g_ic.ic_mode == '\0')) {
 		sleepval = CheckSleep(SLEEP_DEFER_SET_OPMODE);
 		_new_opmode = new_opmode;
-		_current_opmode = current_opmode;
+		_current = current;
 		if (sleepval != -1) {
 			wl_profile = os_malloc(sizeof(*wl_profile));
 			if (wl_profile == NULL) goto LAB_4023d0ad;
 			system_param_load(system_param_sector_start,0,wl_profile,sizeof(*wl_profile));
 			_new_opmode = g_ic.ic_profile.opmode;
 			if (new_opmode != g_ic.ic_profile.opmode) {
+				DPRINTF("changing opmode\n");
 				OpmodChgIsOnGoing = 1;
 				if (user_init_flag == '\x01') {
 					g_ic.ic_profile.opmode = new_opmode;
@@ -1445,9 +1457,9 @@ wifi_set_opmode_local(uint8_t new_opmode, uint8_t current_opmode)
 				OpmodChgIsOnGoing = 0;
 				g_ic.ic_profile.opmode = new_opmode;
 			}
-			if ((current_opmode == '\x01') && (wl_profile->opmode != new_opmode)) {
+			if ((current == '\x01') && (wl_profile->opmode != new_opmode)) {
 				wl_profile->opmode = new_opmode;
-				system_param_save_with_protect((uint16)system_param_sector_start,wl_profile,sizeof(*wl_profile));
+				system_param_save_with_protect(system_param_sector_start,wl_profile,sizeof(*wl_profile));
 				g_ic.ic_profile.opmode = new_opmode;
 			}
 			os_free(wl_profile);
@@ -1460,23 +1472,24 @@ wifi_set_opmode_local(uint8_t new_opmode, uint8_t current_opmode)
 				}
 			}
 			_new_opmode = SleepDeferOpmode;
-			_current_opmode = SleepDeferCurrent5;
+			_current = SleepDeferCurrent5;
 			if ((new_opmode == '\0') &&
 				 (auto_sleep_flag = get_fpm_auto_sleep_flag(), _new_opmode = SleepDeferOpmode,
-				 _current_opmode = SleepDeferCurrent5, auto_sleep_flag == '\x01')) {
+				 _current = SleepDeferCurrent5, auto_sleep_flag == '\x01')) {
 				fpm_set_type_from_upper('\x02');
 				fpm_open();
 				wifi_fpm_do_sleep(0xfffffff);
 				_new_opmode = SleepDeferOpmode;
-				_current_opmode = SleepDeferCurrent5;
+				_current = SleepDeferCurrent5;
 			}
 		}
-		SleepDeferCurrent5 = _current_opmode;
+		SleepDeferCurrent5 = _current;
 		SleepDeferOpmode = _new_opmode;
 		res = true;
 	}
 	else {
 LAB_4023d0ad:
+		DPRINTF("set_opmode_local failed\n");
 		res = false;
 	}
 	return res;
@@ -1544,7 +1557,12 @@ wifi_station_connect(void)
 		DPRINTF("ssid_len=%d\n", ssid_len);
 		if ((ssid_len != -1) && (ssid_len != 0)) {
 			uint32_t chancfg = RTCMEM->SYSTEM_CHANCFG;
+			int min_chan = ieee80211_regdomain_min_chan();
+			int max_chan = ieee80211_regdomain_max_chan();
 			DPRINTF("chancfg=0x%08x\n", chancfg);
+			DPRINTF("bssid_set=%d\n", g_ic.ic_profile.sta.bssid_set);
+			DPRINTF("channel=%d (min=%d, max=%d)\n",
+				 g_ic.ic_profile.sta.channel, min_chan, max_chan);
 			if (chancfg & 0x10000) {
 				if ((chancfg & 0xff) < 14) {
 					cnx_sta_connect_cmd(&g_ic.ic_profile,chancfg & 0xff);
