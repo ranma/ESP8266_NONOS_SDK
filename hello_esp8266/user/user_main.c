@@ -58,6 +58,16 @@ print_sta_config(void)
 	wifi_get_ip_info(STATION_IF, &ip);
 	os_printf("STA SSID: %s\n", config.ssid);
 	os_printf("STA PW: %s\n", config.password);
+	os_printf("STA CHANNEL: %d\n", config.channel);
+	os_printf("STA BSSID: %02x:%02x:%02x:%02x:%02x:%02x\n",
+		config.bssid[0],
+		config.bssid[1],
+		config.bssid[2],
+		config.bssid[3],
+		config.bssid[4],
+		config.bssid[5]);
+	os_printf("STA BSSID_SET: %d\n", config.bssid_set);
+	os_printf("STA ALL_CHANNEL_SCAN: %d\n", config.all_channel_scan);
 	os_printf("STA IP: " IPSTR "\n", IP2STR(&ip.ip));
 }
 
@@ -161,7 +171,6 @@ user_init(void)
 	wifi_set_opmode(STATIONAP_MODE);
 
 	system_init_done_cb(init_done_cb);
-	wifi_set_event_handler_cb(event_handler_cb);
 
 	system_show_malloc();
 }
@@ -176,4 +185,7 @@ user_pre_init(void)
 	if(!system_partition_table_regist(partition_table, partition_table_size,SPI_FLASH_SIZE_MAP)) {
 		os_printf("system_partition_table_regist fail\n");
 	}
+
+	/* Register early so we get the initial opmode change event */
+	wifi_set_event_handler_cb(event_handler_cb);
 }
