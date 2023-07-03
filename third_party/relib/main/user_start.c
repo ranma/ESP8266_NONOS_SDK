@@ -448,7 +448,6 @@ relib_user_local_init(void)
 	bool bVar3;
 	uint8_t uVar4;
 	int iVar5;
-	void *pv;
 	uint32_t uVar6;
 	phy_init_and_rf_cal_st *phy_rf_data;
 	char *rf_cal_data;
@@ -694,8 +693,8 @@ LAB_4022f98c:
 			RTCMEM->BACKUP[0x78/4] = freq_cal & 0xffff;
 		}
 	}
-	system_rtc_mem_write(0,pv,0x1c);
-	vPortFree(pv,"app_main.c",0x571);
+	memset(&rst_if,0,0x1c);
+	system_rtc_mem_write(0,&rst_if,0x1c);
 	wdt_init(true);
 	user_init();
 	ets_timer_disarm(&check_timeouts_timer);
