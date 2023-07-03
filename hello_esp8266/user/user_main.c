@@ -73,6 +73,77 @@ init_done_cb(void)
 	httpd_init(IPADDR_ANY, HTTP_SERVER_PORT);
 }
 
+static void ICACHE_FLASH_ATTR
+event_handler_cb(System_Event_t *sev)
+{
+	os_printf("event_handler_cb(evt=%d)\n", sev->event);
+	switch (sev->event) {
+	case EVENT_STAMODE_CONNECTED:
+		os_printf("  sta connected to ap (chan=%d, bssid=%02x:%02x:%02x:%02x:%02x:%02x)\n",
+			sev->event_info.connected.channel,
+			sev->event_info.connected.bssid[0],
+			sev->event_info.connected.bssid[1],
+			sev->event_info.connected.bssid[2],
+			sev->event_info.connected.bssid[3],
+			sev->event_info.connected.bssid[4],
+			sev->event_info.connected.bssid[5]);
+		break;
+	case EVENT_STAMODE_DISCONNECTED:
+		os_printf("  sta disconnected from ap (reason=%d)\n",
+			sev->event_info.disconnected.reason);
+		break;
+	case EVENT_STAMODE_AUTHMODE_CHANGE:
+		os_printf("  sta auth mode %d -> %d\n",
+			sev->event_info.auth_change.old_mode,
+			sev->event_info.auth_change.new_mode);
+		break;
+	case EVENT_STAMODE_GOT_IP:
+		os_printf("  sta got ip: 0x%08x\n",
+			sev->event_info.got_ip.ip.addr);
+		break;
+	case EVENT_SOFTAPMODE_STACONNECTED:
+		os_printf("  ap sta connected aid=%d mac=%02x:%02x:%02x:%02x:%02x:%02x\n",
+			sev->event_info.sta_connected.aid,
+			sev->event_info.sta_connected.mac[0],
+			sev->event_info.sta_connected.mac[1],
+			sev->event_info.sta_connected.mac[2],
+			sev->event_info.sta_connected.mac[3],
+			sev->event_info.sta_connected.mac[4],
+			sev->event_info.sta_connected.mac[5]);
+		break;
+	case EVENT_SOFTAPMODE_STADISCONNECTED:
+		os_printf("  ap sta disconnected aid=%d mac=%02x:%02x:%02x:%02x:%02x:%02x\n",
+			sev->event_info.sta_disconnected.aid,
+			sev->event_info.sta_disconnected.mac[0],
+			sev->event_info.sta_disconnected.mac[1],
+			sev->event_info.sta_disconnected.mac[2],
+			sev->event_info.sta_disconnected.mac[3],
+			sev->event_info.sta_disconnected.mac[4],
+			sev->event_info.sta_disconnected.mac[5]);
+		break;
+	case EVENT_SOFTAPMODE_PROBEREQRECVED:
+		os_printf("  ap probe req rssi=%d mac=%02x:%02x:%02x:%02x:%02x:%02x\n",
+			sev->event_info.ap_probereqrecved.rssi,
+			sev->event_info.ap_probereqrecved.mac[0],
+			sev->event_info.ap_probereqrecved.mac[1],
+			sev->event_info.ap_probereqrecved.mac[2],
+			sev->event_info.ap_probereqrecved.mac[3],
+			sev->event_info.ap_probereqrecved.mac[4],
+			sev->event_info.ap_probereqrecved.mac[5]);
+		break;
+	case EVENT_OPMODE_CHANGED:
+		os_printf("  opmode changed %d -> %d\n",
+			sev->event_info.opmode_changed.old_opmode,
+			sev->event_info.opmode_changed.new_opmode);
+		break;
+	case EVENT_SOFTAPMODE_DISTRIBUTE_STA_IP:
+		os_printf("  ap new sta ip: aid=%d ip=0x%08x\n",
+			sev->event_info.distribute_sta_ip.ip.addr,
+			sev->event_info.distribute_sta_ip.aid);
+		break;
+	}
+}
+
 void ICACHE_FLASH_ATTR
 user_init(void)
 {
@@ -90,6 +161,7 @@ user_init(void)
 	wifi_set_opmode(STATIONAP_MODE);
 
 	system_init_done_cb(init_done_cb);
+	wifi_set_event_handler_cb(event_handler_cb);
 
 	system_show_malloc();
 }
