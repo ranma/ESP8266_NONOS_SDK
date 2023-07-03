@@ -240,6 +240,8 @@ struct rtc_mem {
 };
 #define RTCMEM ((struct rtc_mem *) 0x60001000)
 
+static_assert(0x600011f4 == (uint32_t)&RTCMEM->SYSTEM_CHANCFG, "SYSTEM_CHANCFG addr mismatch");
+
 struct iomux_regs {
 	/* CONF bit 8: SPI0_CLK_EQU_SYS_CLK */
 	/* CONF bit 9: SPI1_CLK_EQU_SYS_CLK */

@@ -22,6 +22,15 @@
 #include "relib/s/softap_config.h"
 #include "relib/s/rst_info.h"
 
+#if 1
+#define DPRINTF(fmt, ...) do { \
+	ets_printf("[@%p] " fmt, __builtin_return_address(0), ##__VA_ARGS__); \
+	while ((UART0->STATUS & 0xff0000) != 0); \
+} while (0)
+#else
+#define DPRINTF(fmt, ...)
+#endif
+
 extern ieee80211com_st g_ic; /* defined in ieee80211.c */
 extern if_param_st info; /* defined in app_main.c */
 extern ETSTimer sta_con_timer;
@@ -50,6 +59,7 @@ void gpio_output_set(uint32_t set_mask, uint32_t clear_mask, uint32_t enable_mas
 void ICACHE_FLASH_ATTR
 system_init_done_cb(init_done_cb_t cb)
 {
+	DPRINTF("system_init_done_cb(%p)\n", cb);
 	done_cb = cb;
 }
 
@@ -140,6 +150,7 @@ system_get_string_from_flash(void *flash_str,void *ram_str,uint8_t ram_str_len)
 bool
 system_rtc_mem_read(uint8_t src_addr,void *des_addr,uint16_t load_size)
 {
+	DPRINTF("system_rtc_mem_read(%d, %p, %d)\n", src_addr, des_addr, load_size);
 	/* Note: Due to the length check here, this includes the SYSTEM and USER regions */
 	if (src_addr >= (0x300 / 4) || des_addr == NULL || ((uint32_t)des_addr & 3) != 0 || (load_size + src_addr > 0x300)) {
 		return false;
@@ -155,6 +166,12 @@ system_rtc_mem_read(uint8_t src_addr,void *des_addr,uint16_t load_size)
 bool
 system_rtc_mem_write(uint8_t des_addr,void *src_addr,uint16_t save_size)
 {
+	DPRINTF("system_rtc_mem_write(%d, %p, %d)\n", des_addr, src_addr, save_size);
+	if (des_addr == 0 && save_size == 28 && src_addr != NULL) {
+		rst_info_st *ri = src_addr;
+		DPRINTF("  rst_info{epc1=%08x,epc2=%08x,epc3=%08x,depc=%08x}\n",
+			ri->epc1, ri->epc2, ri->epc3, ri->depc);
+	}
 	/* Note: Due to the length check here, this includes the SYSTEM and USER regions */
 	if (des_addr >= (0x300 / 4) || src_addr == NULL || ((uint32_t)src_addr & 3) != 0 || (save_size + des_addr > 0x300)) {
 		return false;
@@ -188,10 +205,10 @@ bool pm_is_waked(void);
 void pm_post(int);
 bool wifi_station_disconnect(void);
 bool wifi_station_connect(void);
-bool wifi_station_set_config_local(station_config_st *config, bool current);
+static bool wifi_station_set_config_local(station_config_st *config, bool current);
 void system_restart_local(void);
-bool wifi_set_opmode_local(uint8_t new_opemode, uint8_t current_opmode);
-bool wifi_softap_set_config_local(softap_config_st *config, bool current);
+static bool wifi_set_opmode_local(uint8_t new_opemode, uint8_t current_opmode);
+static bool wifi_softap_set_config_local(softap_config_st *config, bool current);
 
 enum sleep_fn_idx {
 	SLEEP_DEFER_NONE = 0,
@@ -207,6 +224,7 @@ typedef enum sleep_fn_idx sleep_fn_idx_t;
 void ICACHE_FLASH_ATTR
 SleepDeferTimeOut(void *arg)
 {
+	DPRINTF("SleepDeferTimeOut(num=%d)\n", DeferFuncNum);
 	bool is_waked;
 	bool is_open;
 	int curIdx;
@@ -221,6 +239,7 @@ SleepDeferTimeOut(void *arg)
 			if ((!is_waked) && (is_open = pm_is_open(), is_open)) break;
 			curIdx = CurDeferFuncIndex;
 			fnIdx = DeferFuncIndexArr[curIdx];
+			DPRINTF("  fnIDx = %d\n", fnIdx);
 			if (fnIdx == 1) {
 				wifi_station_disconnect();
 LAB_4023b8c4:
@@ -278,6 +297,7 @@ int ICACHE_FLASH_ATTR
 CheckSleep(sleep_fn_idx_t func_idx)
 {
 	uint32_t newFnIdx;
+	DPRINTF("CheckSleep(%d)\n", func_idx);
 	if (!fpm_allow_tx()) {
 		fpm_do_wakeup();
 	}
@@ -301,15 +321,18 @@ CheckSleep(sleep_fn_idx_t func_idx)
 			}
 			int idx = (CurDeferFuncIndex + newFnIdx - 1) % 10;
 			DeferFuncIndexArr[idx] = func_idx;
+			DPRINTF("  defer[%d] = %d\n", idx, func_idx);
 			return -1;
 		}
 	}
+	DPRINTF("  no defer\n");
 	return 0;
 }
 
 bool ICACHE_FLASH_ATTR
 system_param_load(uint16_t start_sec, uint16_t offset, void *param, uint16 len)
 {
+	DPRINTF("system_param_load(%d, %d, %p, %d)\n", start_sec, offset, param, len);
 	wifi_flash_header_st fhead;
 
 	if (param == NULL || (len + offset) > flashchip->sector_size) {
@@ -327,7 +350,7 @@ void ICACHE_FLASH_ATTR
 wifi_param_save_protect_with_check(uint16_t startsector, int sectorsize, void *pdata, uint16_t len)
 {
 #if 1
-	os_printf_plus("Unimpl: wifi_param_save_protect_with_check\n");
+	DPRINTF("Unimpl: wifi_param_save_protect_with_check\n");
 #else
 	uint32_t *dst_addr;
 	SpiFlashOpResult SVar1;
@@ -371,12 +394,13 @@ wifi_param_save_protect_with_check(uint16_t startsector, int sectorsize, void *p
 bool ICACHE_FLASH_ATTR
 system_param_save_with_protect(uint16_t start_sec, void *param, uint16 len)
 {
-	os_printf_plus("Unimpl: system_param_save_with_protect\n");
+	DPRINTF("Unimpl: system_param_save_with_protect\n");
 }
 
 void ICACHE_FLASH_ATTR
 system_save_sys_param(void)
 {
+	DPRINTF("system_save_sys_param\n");
 	system_param_save_with_protect(system_param_sector_start,&g_ic.ic_profile,sizeof(g_ic.ic_profile));
 }
 
@@ -593,7 +617,7 @@ wifi_station_set_config_local_1(wl_profile_st *profile,station_config_st *config
 
 uint8_t wifi_get_opmode(void);
 
-bool ICACHE_FLASH_ATTR
+static bool ICACHE_FLASH_ATTR
 wifi_station_set_config_local(station_config_st *config, uint8_t current)
 {
 	wl_profile_st *profile;
@@ -632,6 +656,7 @@ wifi_station_set_config_local(station_config_st *config, uint8_t current)
 bool ICACHE_FLASH_ATTR
 wifi_station_set_config(station_config_st *config)
 {
+	DPRINTF("wifi_station_set_config(%p)\n", config);
 	PmkCurrent = '\x01';
 	return wifi_station_set_config_local(config,'\x01');
 }
@@ -639,6 +664,7 @@ wifi_station_set_config(station_config_st *config)
 bool ICACHE_FLASH_ATTR
 wifi_station_set_config_current(station_config_st *config)
 {
+	DPRINTF("wifi_station_set_config_current(%p)\n", config);
 	PmkCurrent = '\0';
 	return wifi_station_set_config_local(config,'\0');
 }
@@ -646,6 +672,7 @@ wifi_station_set_config_current(station_config_st *config)
 void ICACHE_FLASH_ATTR
 wifi_station_save_bssid(void)
 {
+	DPRINTF("wifi_station_save_bssid\n");
 	wl_profile_st *param;
 	uint8_t *bssid;
 	int iVar1;
@@ -667,6 +694,7 @@ wifi_station_save_bssid(void)
 void ICACHE_FLASH_ATTR
 wifi_station_save_ap_channel(uint8_t channel)
 {
+	DPRINTF("wifi_station_save_ap_channel(%d)\n", channel);
 	int iVar1;
 	wl_profile_st *param;
 	uint32_t uVar2;
@@ -720,11 +748,11 @@ system_station_got_ip_set(ip_addr_st *ip, ip_addr_st *mask, ip_addr_st *gw)
 			  (gw->addr != (netif->gw).addr)))))) {
 		System_Event_st *sev = os_zalloc(sizeof(*sev));
 		if (sev != NULL) {
-			sev->event = EVENT_GOT_IP;
+			sev->event = EVENT_STAMODE_GOT_IP;
 			sev->event_info.got_ip.ip = netif->ip_addr;
 			sev->event_info.got_ip.mask = netif->netmask;
 			sev->event_info.got_ip.gw = netif->gw;
-			if (ets_post(PRIO_EVENT,EVENT_GOT_IP,(ETSParam)sev) != 0) {
+			if (ets_post(PRIO_EVENT,EVENT_STAMODE_GOT_IP,(ETSParam)sev) != 0) {
 				os_free(sev);
 			}
 		}
@@ -759,6 +787,7 @@ wifi_station_get_auto_connect(void)
 void ICACHE_FLASH_ATTR
 wifi_station_save_pmk2cache(void)
 {
+	DPRINTF("wifi_station_save_pmk2cache\n");
 	wl_profile_st *param;
 	int ap_num = g_ic.ic_profile.ap_change_param.ap_number;
 	int i;
@@ -792,6 +821,7 @@ wifi_station_save_pmk2cache(void)
 void ICACHE_FLASH_ATTR
 wifi_station_set_default_hostname(char *macaddr)
 {
+	DPRINTF("wifi_station_set_default_hostname:\n");
 	if (hostname == NULL) {
 		hostname = os_malloc(0x20);
 	}
@@ -799,6 +829,7 @@ wifi_station_set_default_hostname(char *macaddr)
 		return;
 	}
 	ets_sprintf(hostname,"ESP-%02X%02X%02X",macaddr[3],macaddr[4],macaddr[5]);
+	DPRINTF("  %s\n", hostname);
 }
 
 
@@ -826,7 +857,7 @@ wifi_get_macaddr(uint8 if_index,uint8 *macaddr)
 	return true;
 }
 
-bool ICACHE_FLASH_ATTR
+static bool ICACHE_FLASH_ATTR
 wifi_softap_get_config_local(softap_config_st *config,uint8_t current)
 {
 	uint8_t bVar1;
@@ -913,12 +944,14 @@ wifi_softap_get_config_local(softap_config_st *config,uint8_t current)
 bool ICACHE_FLASH_ATTR
 wifi_softap_get_config(softap_config_st *config)
 {
+	DPRINTF("wifi_softap_get_config(%p)\n", config);
 	return wifi_softap_get_config_local(config,'\x01');
 }
 
 bool ICACHE_FLASH_ATTR
 wifi_softap_set_default_ssid(void)
 {
+	DPRINTF("wifi_softap_set_default_ssid\n");
 	uint8_t mac[6];
 
 	wifi_get_macaddr('\x01',mac);
@@ -1069,7 +1102,7 @@ LAB_4023e640:
 	return true;
 }
 
-bool ICACHE_FLASH_ATTR
+static bool ICACHE_FLASH_ATTR
 wifi_softap_set_config_local(softap_config_st *config, uint8_t current)
 {
 	bool bVar2;
@@ -1103,6 +1136,7 @@ wifi_softap_set_config_local(softap_config_st *config, uint8_t current)
 int ICACHE_FLASH_ATTR
 wifi_softap_set_station_info(char *mac, ip_addr_t *addr)
 {
+	DPRINTF("wifi_softap_set_station_info\n");
 	ieee80211_conn_st *conn;
 	System_Event_st *param;
 
@@ -1114,11 +1148,11 @@ wifi_softap_set_station_info(char *mac, ip_addr_t *addr)
 			if (memcmp(mac,conn->ni_ap_bss[bss_idx]->ni_bssid,6) == 0) {
 				conn->ni_ap_bss[bss_idx]->ni_ip = addr->addr;
 				if ((event_cb != NULL) && (param = os_zalloc(sizeof(*param)), param != NULL)) {
-					param->event = EVENT_DISTRIBUTE_STA_IP;
+					param->event = EVENT_SOFTAPMODE_DISTRIBUTE_STA_IP;
 					param->event_info.distribute_sta_ip.aid = conn->ni_ap_bss[bss_idx]->ni_associd;
 					memcpy(&param->event_info.distribute_sta_ip.mac,mac,6);
 					param->event_info.distribute_sta_ip.ip = *addr;
-					if (ets_post(PRIO_EVENT,EVENT_DISTRIBUTE_STA_IP,(ETSParam)param) != 0) {
+					if (ets_post(PRIO_EVENT,EVENT_SOFTAPMODE_DISTRIBUTE_STA_IP,(ETSParam)param) != 0) {
 						os_free(param);
 					}
 				}
@@ -1156,6 +1190,7 @@ void dhcp_cleanup(struct netif *netif);
 void ICACHE_FLASH_ATTR
 wifi_station_dhcpc_event(void)
 {
+	DPRINTF("wifi_station_dhcpc_event\n");
 	if (event_cb != NULL) {
 		struct netif *netif = eagle_lwip_getif('\0');
 		if (netif != NULL) {
@@ -1182,6 +1217,7 @@ void cnx_node_leave(ieee80211_conn_st *ni, ieee80211_bss_st *bss);
 bool ICACHE_FLASH_ATTR
 wifi_softap_deauth(uint8_t *da)
 {
+	DPRINTF("wifi_softap_deauth\n");
 	ieee80211_conn_st *conn;
 	
 	conn = g_ic.ic_if1_conn;
@@ -1293,6 +1329,7 @@ system_get_data_of_array_8(const unsigned char *array, int ofs)
 bool ICACHE_FLASH_ATTR
 wifi_get_ip_info(uint8_t if_index, struct ip_info *ip_info)
 {
+	DPRINTF("wifi_get_ip_info(%d)\n", if_index);
 	if ((if_index > 1) || (ip_info == NULL)) {
 		return false;
 	}
@@ -1379,7 +1416,7 @@ void fpm_set_type_from_upper(uint8_t typ);
 void fpm_open(void);
 int8_t wifi_fpm_do_sleep(uint32_t sleep_time_in_us);
 
-bool ICACHE_FLASH_ATTR
+static bool ICACHE_FLASH_ATTR
 wifi_set_opmode_local(uint8_t new_opmode, uint8_t current_opmode)
 {
 	uint8_t auto_sleep_flag;
@@ -1454,6 +1491,7 @@ wifi_get_opmode(void)
 bool ICACHE_FLASH_ATTR
 wifi_set_opmode(uint8_t opmode)
 {
+	DPRINTF("wifi_set_opmode(%d)\n", opmode);
 	return wifi_set_opmode_local(opmode, true);
 }
 
@@ -1480,6 +1518,7 @@ wifi_station_get_reconnect_policy(void)
 bool ICACHE_FLASH_ATTR
 wifi_station_set_reconnect_policy(bool set)
 {
+	DPRINTF("wifi_station_set_reconnect_policy(%d)\n", set);
 	reconnect_internal = set;
 	return true;
 }
@@ -1489,10 +1528,12 @@ void cnx_sta_connect_cmd(wl_profile_st *prof, uint8_t desChan);
 bool ICACHE_FLASH_ATTR
 wifi_station_connect(void)
 {
+	DPRINTF("wifi_station_connect\n");
 	ieee80211_conn_st *if0_conn = g_ic.ic_if0_conn;
 	uint8_t opmode = wifi_get_opmode();
 	if ((((opmode == '\x02') || (opmode == '\0')) || (if0_conn == NULL)) ||
 		 (g_ic.ic_mode != '\0')) {
+		DPRINTF("wifi_station_connect fail\n");
 		return false;
 	}
 
@@ -1500,8 +1541,10 @@ wifi_station_connect(void)
 		(g_ic.ic_if0_conn)->ni_connect_step = '\0';
 		int ssid_len = g_ic.ic_profile.sta.ssid.len;
 		(g_ic.ic_if0_conn)->ni_connect_err_time = '\0';
+		DPRINTF("ssid_len=%d\n", ssid_len);
 		if ((ssid_len != -1) && (ssid_len != 0)) {
 			uint32_t chancfg = RTCMEM->SYSTEM_CHANCFG;
+			DPRINTF("chancfg=0x%08x\n", chancfg);
 			if (chancfg & 0x10000) {
 				if ((chancfg & 0xff) < 14) {
 					cnx_sta_connect_cmd(&g_ic.ic_profile,chancfg & 0xff);
@@ -1515,6 +1558,7 @@ wifi_station_connect(void)
 			}
 		}
 	}
+	DPRINTF("wifi_station_connect started\n");
 	return true;
 }
 
@@ -1525,6 +1569,7 @@ int ieee80211_sta_new_state(ieee80211com_st *ic, ieee80211_state_t nstate, int a
 bool ICACHE_FLASH_ATTR
 wifi_station_disconnect(void)
 {
+	DPRINTF("wifi_station_disconnect\n");
 	ieee80211_conn_st *conn = g_ic.ic_if0_conn;
 	uint8_t opmode = wifi_get_opmode();
 	if (((conn == NULL) || (g_ic.ic_mode != '\0')) ||
@@ -1572,6 +1617,7 @@ static ETSEvent event_TaskQueue[0x20];
 void ICACHE_FLASH_ATTR
 wifi_set_event_handler_cb(wifi_event_handler_cb_t cb)
 {
+	DPRINTF("wifi_set_event_handler_cb(%p)\n", cb);
 	static bool event_flag = false;
 	if (!event_flag) {
 		ets_task(Event_task,PRIO_EVENT,event_TaskQueue,(uint8_t)ARRAY_SIZE(event_TaskQueue));
@@ -1583,6 +1629,7 @@ wifi_set_event_handler_cb(wifi_event_handler_cb_t cb)
 bool ICACHE_FLASH_ATTR
 system_os_task(ETSTask task,uint8_t prio,ETSEvent *queue,uint8_t qlen)
 {
+	DPRINTF("system_os_task(%d, %d, %p, %d)\n", task, prio, queue, qlen);
 	if (prio < 3) {
 		if ((queue != NULL) && (qlen != 0)) {
 			ets_task(task,prio + 2 /* bug? */, queue, qlen);
@@ -1601,6 +1648,7 @@ void user_uart_wait_tx_fifo_empty(uint8_t uart_no, uint32_t time_out_us);
 void ICACHE_FLASH_ATTR
 system_uart_swap(void)
 {
+	DPRINTF("system_uart_swap()\n");
 	user_uart_wait_tx_fifo_empty(0,500000);
 	user_uart_wait_tx_fifo_empty(1,500000);
 	/* 0x60000808 / UART0_CTS */
@@ -1614,6 +1662,7 @@ system_uart_swap(void)
 void ICACHE_FLASH_ATTR
 system_uart_de_swap(void)
 {
+	DPRINTF("system_uart_deswap()\n");
 	user_uart_wait_tx_fifo_empty(0,500000);
 	user_uart_wait_tx_fifo_empty(1,500000);
 	/* Unswap UART0 pins (u0rxd <-> u0cts), (u0txd <-> u0rts) */
