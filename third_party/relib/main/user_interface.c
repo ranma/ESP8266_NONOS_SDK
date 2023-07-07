@@ -21,6 +21,7 @@
 #include "relib/s/station_config.h"
 #include "relib/s/softap_config.h"
 #include "relib/s/rst_info.h"
+#include "relib/s/opmode.h"
 
 #if 1
 #define DPRINTF(fmt, ...) do { \
@@ -166,12 +167,14 @@ system_rtc_mem_read(uint8_t src_addr,void *des_addr,uint16_t load_size)
 bool
 system_rtc_mem_write(uint8_t des_addr,void *src_addr,uint16_t save_size)
 {
+#if 0
 	DPRINTF("system_rtc_mem_write(%d, %p, %d)\n", des_addr, src_addr, save_size);
 	if (des_addr == 0 && save_size == 28 && src_addr != NULL) {
 		rst_info_st *ri = src_addr;
 		DPRINTF("  rst_info{epc1=%08x,epc2=%08x,epc3=%08x,depc=%08x}\n",
 			ri->epc1, ri->epc2, ri->epc3, ri->depc);
 	}
+#endif
 	/* Note: Due to the length check here, this includes the SYSTEM and USER regions */
 	if (des_addr >= (0x300 / 4) || src_addr == NULL || ((uint32_t)src_addr & 3) != 0 || (save_size + des_addr > 0x300)) {
 		return false;
@@ -193,7 +196,7 @@ static uint8_t CurDeferFuncIndex;
 static uint8_t SleepDeferCurrent3;
 static uint8_t SleepDeferCurrent5;
 static uint8_t SleepDeferCurrent6;
-static uint8_t SleepDeferOpmode;
+static opmode_t SleepDeferOpmode;
 static station_config_st SleepDeferStationConfig;
 static softap_config_st SleepDeferSoftAPConfig;
 static bool OpmodChgIsOnGoing;
@@ -207,7 +210,7 @@ bool wifi_station_disconnect(void);
 bool wifi_station_connect(void);
 static bool wifi_station_set_config_local(station_config_st *config, bool current);
 void system_restart_local(void);
-static bool wifi_set_opmode_local(uint8_t new_opmode, bool current);
+static bool wifi_set_opmode_local(opmode_t new_opmode, bool current);
 static bool wifi_softap_set_config_local(softap_config_st *config, bool current);
 
 enum sleep_fn_idx {
@@ -454,6 +457,7 @@ extern uint8_t no_ap_found_index;
 void ICACHE_FLASH_ATTR
 wifi_station_set_config_local_3(void)
 {
+	DPRINTF("wifi_station_set_config_local_3\n");
 	wl_profile_st *param = os_malloc(sizeof(*param));
 	if (param == NULL) {
 		return;
@@ -551,6 +555,7 @@ wifi_station_set_config_local_2(wl_profile_st *profile,station_config_st *config
 void ICACHE_FLASH_ATTR
 wifi_station_set_config_local_1(wl_profile_st *profile,station_config_st *config,uint8_t current)
 {
+	DPRINTF("wifi_station_set_config_local_1\n");
 	static uint8_t ap_id;
 	int8 iVar1;
 	bool bVar2;
@@ -629,7 +634,7 @@ wifi_station_set_config_local(station_config_st *config, uint8_t current)
 		return false;
 	}
 
-	if (current == '\x02') {
+	if (current == '\x02') { /* current set to 2 in wifi_station_restore_config */
 		wifi_station_set_config_local_3();
 	}
 	else {
@@ -687,6 +692,8 @@ wifi_station_save_bssid(void)
 			if (memcmp(bssid,g_ic.ic_profile.sta.bssid,6) != 0) {
 				memcpy(bssid,g_ic.ic_profile.sta.bssid,6);
 				system_param_save_with_protect((uint16)system_param_sector_start,param,sizeof(*param));
+			} else {
+				DPRINTF("  bssid unchanged, not saved\n");
 			}
 			os_free(param);
 		}
@@ -780,6 +787,7 @@ system_station_got_ip_set(ip_addr_st *ip, ip_addr_st *mask, ip_addr_st *gw)
 bool ICACHE_FLASH_ATTR
 wifi_station_get_auto_connect(void)
 {
+	DPRINTF("wifi_station_get_auto_connect: %d\n", g_ic.ic_profile.auto_connect);
 	if (g_ic.ic_profile.auto_connect < 2) {
 		return g_ic.ic_profile.auto_connect;
 	}
@@ -1176,12 +1184,14 @@ typedef enum dhcp_status {
 dhcp_status_t ICACHE_FLASH_ATTR
 wifi_softap_dhcps_status(void)
 {
+	DPRINTF("wifi_softap_dhcps_status: %d\n", dhcps_flag);
 	return dhcps_flag;
 }
 
 dhcp_status_t ICACHE_FLASH_ATTR
 wifi_station_dhcpc_status(void)
 {
+	DPRINTF("wifi_softap_dhcpc_status: %d\n", dhcpc_flag);
 	return dhcpc_flag;
 }
 
@@ -1303,9 +1313,9 @@ wifi_disable_signaling_measurement(void)
 }
 
 enum phy_mode {
-    PHY_MODE_11B    = 1,
-    PHY_MODE_11G    = 2,
-    PHY_MODE_11N    = 3
+	PHY_MODE_11B    = 1,
+	PHY_MODE_11G    = 2,
+	PHY_MODE_11N    = 3
 };
 
 enum phy_mode ICACHE_FLASH_ATTR
@@ -1385,36 +1395,36 @@ wifi_get_opmode_local(bool current)
 	return mode;
 }
 
-void wifi_mode_set(uint8_t opmode);
+void wifi_mode_set(opmode_t opmode);
 void wifi_station_start(void);
 void wifi_station_stop(void);
 void netif_set_default(struct netif *ni);
 
 void ICACHE_FLASH_ATTR
-wifi_set_opmode_local_2(uint8_t opmode)
+wifi_set_opmode_local_2(opmode_t opmode)
 {
 	if (opmode > 3) {
-		opmode = 2;
+		opmode = SOFTAP_MODE;
 	}
-	if ((opmode == 1) || (opmode == 0)) {
+	if ((opmode == STATION_MODE) || (opmode == NULL_MODE)) {
 		DPRINTF("wifi_softap_stop\n");
 		wifi_softap_stop('\0');
 	}
-	if ((opmode == 2) || (opmode == 0)) {
+	if ((opmode == SOFTAP_MODE) || (opmode == NULL_MODE)) {
 		DPRINTF("wifi_station_stop\n");
 		wifi_station_stop();
 	}
 	DPRINTF("wifi_mode_set(%d)\n", opmode);
 	wifi_mode_set(opmode);
-	if ((opmode == 1) || (opmode == 3)) {
+	if ((opmode == STATION_MODE) || (opmode == STATIONAP_MODE)) {
 		DPRINTF("wifi_station_start: if0=%p\n", g_ic.ic_if0_conn);
 		wifi_station_start();
 	}
-	if ((opmode == 2) || (opmode == 3)) {
+	if ((opmode == SOFTAP_MODE) || (opmode == STATIONAP_MODE)) {
 		DPRINTF("wifi_softap_start\n");
 		wifi_softap_start(0);
 	}
-	if (opmode == 1) {
+	if (opmode == STATION_MODE) {
 		netif_set_default((g_ic.ic_if0_conn)->ni_ifp);
 	}
 }
@@ -1425,15 +1435,15 @@ void fpm_open(void);
 int8_t wifi_fpm_do_sleep(uint32_t sleep_time_in_us);
 
 static bool ICACHE_FLASH_ATTR
-wifi_set_opmode_local(uint8_t new_opmode, bool current)
+wifi_set_opmode_local(opmode_t new_opmode, bool current)
 {
 	uint8_t auto_sleep_flag;
 	bool res;
 	int sleepval;
 	wl_profile_st *wl_profile;
 	System_Event_st *sev;
-	uint8_t _current;
-	uint8_t _new_opmode;
+	bool _current;
+	opmode_t _new_opmode;
 	DPRINTF("wifi_set_opmode_local(mode=%d -> %d, current=%d)\n",
 		new_opmode,
 		g_ic.ic_profile.opmode,
@@ -1502,7 +1512,7 @@ wifi_get_opmode(void)
 }
 
 bool ICACHE_FLASH_ATTR
-wifi_set_opmode(uint8_t opmode)
+wifi_set_opmode(opmode_t opmode)
 {
 	DPRINTF("wifi_set_opmode(%d)\n", opmode);
 	return wifi_set_opmode_local(opmode, true);
@@ -1512,9 +1522,9 @@ uint8_t ICACHE_FLASH_ATTR
 wifi_station_get_connect_status(void)
 {
 	ieee80211_conn_st *conn = g_ic.ic_if0_conn;
-	uint8_t opmode = wifi_get_opmode();
+	opmode_t opmode = wifi_get_opmode();
 
-	if (((opmode == 2) || (opmode == 0)) || (conn == NULL)) {
+	if (((opmode == SOFTAP_MODE) || (opmode == NULL_MODE)) || (conn == NULL)) {
 		return -1;
 	}
 	return conn->ni_connect_status;
@@ -1525,6 +1535,7 @@ static bool reconnect_internal;
 bool ICACHE_FLASH_ATTR
 wifi_station_get_reconnect_policy(void)
 {
+	DPRINTF("wifi_station_get_reconnect_policy: %d\n", reconnect_internal);
 	return reconnect_internal;
 }
 
@@ -1543,8 +1554,8 @@ wifi_station_connect(void)
 {
 	DPRINTF("wifi_station_connect\n");
 	ieee80211_conn_st *if0_conn = g_ic.ic_if0_conn;
-	uint8_t opmode = wifi_get_opmode();
-	if ((((opmode == '\x02') || (opmode == '\0')) || (if0_conn == NULL)) ||
+	opmode_t opmode = wifi_get_opmode();
+	if ((((opmode == SOFTAP_MODE) || (opmode == NULL_MODE)) || (if0_conn == NULL)) ||
 		 (g_ic.ic_mode != '\0')) {
 		DPRINTF("wifi_station_connect fail\n");
 		return false;
@@ -1589,9 +1600,9 @@ wifi_station_disconnect(void)
 {
 	DPRINTF("wifi_station_disconnect\n");
 	ieee80211_conn_st *conn = g_ic.ic_if0_conn;
-	uint8_t opmode = wifi_get_opmode();
+	opmode_t opmode = wifi_get_opmode();
 	if (((conn == NULL) || (g_ic.ic_mode != '\0')) ||
-		 (((opmode == '\x02' || (opmode == '\0')) && (OpmodChgIsOnGoing == '\0')))) {
+		 (((opmode == SOFTAP_MODE || (opmode == NULL_MODE)) && (OpmodChgIsOnGoing == '\0')))) {
 		return false;
 	}
 
@@ -1622,7 +1633,7 @@ wifi_station_disconnect(void)
 void ICACHE_FLASH_ATTR
 Event_task(ETSEvent *events)
 {
-	os_printf_plus("Event_task(%d, %p)\n", events->sig, events->par);
+	//os_printf_plus("Event_task(%d, %p)\n", events->sig, events->par);
 	System_Event_st *sev = (System_Event_st *)events->par;
 	if ((event_cb != NULL) && (sev != NULL)) {
 		event_cb(sev);

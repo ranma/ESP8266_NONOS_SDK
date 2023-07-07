@@ -26,6 +26,7 @@
 #include "relib/s/wifi_flash_header.h"
 #include "relib/s/rst_info.h"
 #include "relib/s/if_param.h"
+#include "relib/s/opmode.h"
 
 #define BOOT_CLK_FREQ   52000000
 #define NORMAL_CLK_FREQ 80000000
@@ -446,7 +447,6 @@ relib_user_local_init(void)
 	uint8_t bVar1;
 	char cVar2;
 	bool bVar3;
-	uint8_t uVar4;
 	int iVar5;
 	uint32_t uVar6;
 	phy_init_and_rf_cal_st *phy_rf_data;
@@ -699,37 +699,35 @@ LAB_4022f98c:
 	user_init();
 	ets_timer_disarm(&check_timeouts_timer);
 	ets_timer_arm_new(&check_timeouts_timer,lwip_timer_interval,1,1);
-	uVar4 = g_ic.ic_profile.opmode;
 	WDT->RST = 0x73;  /* WDT_FEED() */
 	user_init_flag = 1;
 
 	install_task_hooks();
 
+	opmode_t opmode = g_ic.ic_profile.opmode;
 	wifi_mode_set(g_ic.ic_profile.opmode);
-	if ((uVar4 == '\x01') || (uVar4 == '\x03')) {
+	if ((opmode == STATION_MODE) || (opmode == STATIONAP_MODE)) {
 		os_printf_plus("wifi_station_start: if0=%p\n", g_ic.ic_if0_conn);
 		wifi_station_start();
 	}
-	if (uVar4 == '\x02') {
-		if (g_ic.ic_mode == '\x02') {
+	if (opmode == SOFTAP_MODE) {
+		if (g_ic.ic_mode == 2) {
 			wifi_softap_start(1);
 			goto LAB_4022f927;
 		}
 	}
-	else if (uVar4 != '\x03') goto LAB_4022f927;
+	else if (opmode != STATIONAP_MODE) goto LAB_4022f927;
 	wifi_softap_start(0);
 LAB_4022f927:
-	if (uVar4 == '\x01') {
+	if (opmode == STATION_MODE) {
 		netif_set_default(g_ic.ic_if0_conn->ni_ifp);
 	}
-	iVar5 = wifi_station_get_auto_connect();
-	if (iVar5 == 1) {
+	if (wifi_station_get_auto_connect()) {
 		wifi_station_connect();
 	}
-	if (done_cb != (init_done_cb_t)0x0) {
+	if (done_cb != NULL) {
 		done_cb();
 	}
-	return;
 }
 #endif
 
