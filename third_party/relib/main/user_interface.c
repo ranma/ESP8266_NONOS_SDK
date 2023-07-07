@@ -34,7 +34,7 @@
 
 extern ieee80211com_st g_ic; /* defined in ieee80211.c */
 extern if_param_st info; /* defined in app_main.c */
-extern ETSTimer sta_con_timer;
+extern ETSTimer sta_con_timer; /* defined in wl_cnx.c */
 extern bool user_init_flag;
 extern bool BcnEb_update;
 extern char *hostname;

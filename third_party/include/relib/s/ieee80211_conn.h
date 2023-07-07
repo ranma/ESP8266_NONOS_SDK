@@ -38,6 +38,10 @@ struct ieee80211_conn {
 			uint8_t ni_macaddr[6];
 		};
 		struct {
+			uint8_t pad80[80];
+			uint32_t ni_flags;
+		};
+		struct {
 			uint8_t pad144[144];
 			struct ieee80211_bss* ni_bss;
 		};

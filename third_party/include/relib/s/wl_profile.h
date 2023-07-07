@@ -3,6 +3,7 @@
 
 #include "relib/s/boot_hdr_param.h"
 #include "relib/s/ieee80211_ssid.h"
+#include "relib/s/opmode.h"
 
 #ifdef __USER_INTERFACE_H__
 typedef WPS_TYPE_t wps_type_t;
@@ -58,7 +59,7 @@ struct softap_param {
 typedef struct softap_param softap_param_st;
 
 struct wifi_status_led_param {
-	uint8_t open_flag;
+	bool open_flag;
 	uint8_t gpio_id;
 	uint8_t status;
 };
@@ -101,7 +102,7 @@ struct wl_profile {
 		uint8_t pad1[0x4a4];
 		struct {
 			boot_hdr_param_st boot_hdr_param;
-			uint8_t opmode;
+			opmode_t opmode;
 		};
 		struct {
 			uint8_t pad_9[9];

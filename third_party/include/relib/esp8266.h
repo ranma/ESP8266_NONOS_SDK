@@ -315,10 +315,32 @@ struct wdev_base_regs {
 	REG32(RX_DESC);  // 0x014
 	REG32(reg018);   // 0x018
 	REG32(reg01c);   // 0x01c
+	REG32(reg020);   // 0x020
+	REG32(reg024);   // 0x024
+	REG32(reg028);   // 0x028
+	REG32(reg02c);   // 0x02c
+	REG32(reg030);   // 0x030
+	REG32(reg034);   // 0x034
+	REG32(reg038);   // 0x038
+	REG32(reg03c);   // 0x03c
+	REG32(reg040);   // 0x040
+	REG32(reg044);   // 0x044
+	REG32(reg048);   // 0x048
+	REG32(reg04c);   // 0x04c
+	REG32(reg050);   // 0x050
+	REG32(reg054);   // 0x054
+	REG32(reg058);   // 0x058
+	REG32(reg05c);   // 0x05c
+	REG32(reg060);   // 0x060
+	REG32(reg064);   // 0x064
+	REG32(reg068);   // 0x068
+	REG32(reg06c_recv_flag);   // 0x06c
 };
 static_assert(OFFSET_OF(struct wdev_base_regs, RX_DESC) == 0x14, "RX_DESC offset mismatch");
 
 #define WDEV_BASE ((struct wdev_base_regs *) 0x3ff20000)
+
+static_assert(0x3ff2006c == (uint32_t)&WDEV_BASE->reg06c_recv_flag, "0x3ff2006c addr mismatch");
 
 struct wdev_regs {
 	REG32(MICROS);  /* WDEV_COUNT_REG; microseconds, counting up */
