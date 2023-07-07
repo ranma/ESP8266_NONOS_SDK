@@ -3,6 +3,7 @@
 
 #include "relib/s/wl_profile.h"
 #include "relib/s/ieee80211_channel.h"
+#include "relib/s/wifi_country.h"
 
 struct ieee80211_conn;
 struct ieee80211_scaner;
@@ -38,6 +39,7 @@ typedef struct ieee80211com {
 		struct {
 			uint8_t pad_300[300];
 			ieee80211_channel_st *ic_home_channel;
+			wifi_country_st ic_country;
 		};
 		struct {
 			uint8_t pad_20c[0x20c];

@@ -2,15 +2,9 @@
 #define RELIB_IEEE80211_BSS_H
 
 #include "ets_sys.h"
+#include "relib/s/wifi_country.h"
 
 struct ieee80211_channel;
-
-struct wifi_country {
-	char cc[3];
-	uint8_t schan;
-	uint8_t nchan;
-	uint8_t policy;
-};
 
 struct ieee80211_rateset {
 	uint8_t rs_nrates;
