@@ -86,7 +86,6 @@ init_done_cb(void)
 static void ICACHE_FLASH_ATTR
 event_handler_cb(System_Event_t *sev)
 {
-	os_printf("event_handler_cb(evt=%d)\n", sev->event);
 	switch (sev->event) {
 	case EVENT_STAMODE_CONNECTED:
 		os_printf("  sta connected to ap (chan=%d, bssid=%02x:%02x:%02x:%02x:%02x:%02x)\n",
@@ -151,6 +150,8 @@ event_handler_cb(System_Event_t *sev)
 			sev->event_info.distribute_sta_ip.ip.addr,
 			sev->event_info.distribute_sta_ip.aid);
 		break;
+	default:
+		os_printf("event_handler_cb: unhanlded event %d\n", sev->event);
 	}
 }
 
