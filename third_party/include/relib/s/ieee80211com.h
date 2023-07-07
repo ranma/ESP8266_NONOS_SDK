@@ -2,14 +2,17 @@
 #define RELIB_IEEE80211COM_H
 
 #include "relib/s/wl_profile.h"
+#include "relib/s/ieee80211_channel.h"
 
 struct ieee80211_conn;
 struct ieee80211_scaner;
+struct cnx_mgr;
 
 typedef struct ieee80211com {
 	/* shallow struct def to avoid pulling in all the other struct members */
 	union {
 		uint8_t pad1[0x6b4];
+		struct cnx_mgr *cnxmgr;
 		struct {
 			uint8_t pad_4[4];
 			struct ieee80211_scaner *scaner;
@@ -27,6 +30,14 @@ typedef struct ieee80211com {
 		struct {
 			uint8_t pad_28[28];
 			uint32_t ic_flags;
+		};
+		struct {
+			uint8_t pad_132[132];
+			ieee80211_channel_st ic_channels[14];
+		};
+		struct {
+			uint8_t pad_300[300];
+			ieee80211_channel_st *ic_home_channel;
 		};
 		struct {
 			uint8_t pad_20c[0x20c];
