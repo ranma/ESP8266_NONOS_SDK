@@ -46,10 +46,10 @@ typedef void (*wifi_promiscuous_cb_t)(uint8_t *buf, uint16_t len);
 init_done_cb_t done_cb;
 wifi_event_handler_cb_t event_cb;
 wifi_promiscuous_cb_t promiscuous_cb;
-int system_param_sector_start;
-bool timer2_ms_flag;
-bool dhcps_flag;
-bool dhcpc_flag;
+int system_param_sector_start = 0xff;
+bool timer2_ms_flag = true;
+bool dhcps_flag = true;
+bool dhcpc_flag = true;
 bool deep_sleep_flag;
 uint8_t default_interface;
 uint8_t status_led_output_level;
@@ -450,7 +450,7 @@ wifi_station_get_config(station_config_st *config)
 	return wifi_station_get_config_local(config,'\x01');
 }
 
-static bool PmkCurrent;
+static bool PmkCurrent = true;
 
 extern uint8_t no_ap_found_index;
 
@@ -1530,7 +1530,7 @@ wifi_station_get_connect_status(void)
 	return conn->ni_connect_status;
 }
 
-static bool reconnect_internal;
+static bool reconnect_internal = true;
 
 bool ICACHE_FLASH_ATTR
 wifi_station_get_reconnect_policy(void)
