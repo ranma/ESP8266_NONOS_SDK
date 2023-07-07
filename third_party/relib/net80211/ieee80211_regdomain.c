@@ -138,10 +138,11 @@ ieee80211_regdomain_update(ieee80211_bss_st *bss,uint8_t *frm)
 		.cc[2] = frm[4],
 		.schan = frm[5],
 		.nchan = frm[6],
+		.policy = 0,
 	};
 	if (memcmp(country, &new_country, sizeof(*country)) != 0) {
 		DPRINTF("ieee80211_regdomain_update(%c%c s=%d n=%d)\n",
-			frm[2], frm[3], frm[5], frm[6]);
+			new_country.cc[0], new_country.cc[1], new_country.schan, new_country.nchan);
 		*country = new_country;
 	}
 	return true;
