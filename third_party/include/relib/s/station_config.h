@@ -12,7 +12,7 @@ struct station_config {
 	uint8_t ssid[32];
 	uint8_t password[64];
 	uint8_t channel;
-	uint8_t bssid_set;
+	bool bssid_set;
 	uint8_t bssid[6];
 	struct wifi_fast_scan_threshold threshold;
 	bool open_and_wep_mode_disable;

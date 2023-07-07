@@ -15,6 +15,8 @@
 #include "relib/s/ieee80211com.h"
 #include "relib/s/ieee80211_conn.h"
 #include "relib/s/wl_profile.h"
+#include "relib/s/station_config.h"
+#include "relib/s/system_event.h"
 #include "relib/s/cnx_mgr.h"
 
 #if 1
@@ -32,6 +34,10 @@ extern ieee80211com_st g_ic; /* ieee80211.c */
 extern ETSTimer sta_con_timer; /* wl_cnx.c */
 extern cnx_mgr_st g_cnxMgr; /* wl_cnx.c:84 */
 extern uint8_t backup_ni_connect_status; /* wl_cnx.c */
+extern uint8_t no_ap_found_index; /* wl_cnx.c */
+typedef void (*wifi_event_handler_cb_t)(System_Event_st *event);
+extern wifi_event_handler_cb_t event_cb; /* user_interface.c */
+extern bool reconnect_flag; /* wl_cnx.c */
 
 typedef enum bcn_policy {
 	RX_DISABLE=0,
@@ -63,8 +69,105 @@ cnx_sta_connect_led_timer_cb(void *unused_arg)
 	g_ic.ic_profile.led.status = !g_ic.ic_profile.led.status;
 }
 
+void cnx_sta_connect_cmd(wl_profile_st *prof, uint8_t desChan);
+int ieee80211_sta_new_state(ieee80211com_st *ic, ieee80211_state_t nstate, int arg);
+
+void ICACHE_FLASH_ATTR
+cnx_connect_timeout(void *unused_arg)
+{
+	ieee80211_conn_st *conn = g_ic.ic_if0_conn;
+
+	os_printf_plus("reconnect\n");
+	if (conn->ni_mlme_state != IEEE80211_S_INIT) {
+		reconnect_flag = true;
+		ieee80211_sta_new_state(&g_ic,IEEE80211_S_INIT,0);
+		reconnect_flag = false;
+	}
+	uint32_t chancfg = RTCMEM->SYSTEM_CHANCFG;
+	if (chancfg & 0x10000) {
+		if ((chancfg & 0xff) < 0xe) {
+			cnx_sta_connect_cmd(&g_ic.ic_profile,chancfg & 0xff);
+		}
+		else {
+			cnx_sta_connect_cmd(&g_ic.ic_profile,0);
+		}
+	}
+	else {
+		cnx_sta_connect_cmd(&g_ic.ic_profile,0);
+	}
+}
+
+
 STATUS cnx_traverse_rc_list(cnx_traverse_rc_list_cb_t cb, void *arg);
-void cnx_do_handoff(void);
+void cnx_remove_rc_except(ieee80211_bss_st *bss);
+STATUS cnx_connect_to_bss(ieee80211_bss_st *bss);
+struct ieee80211_bss *cnx_choose_rc(void);
+bool wifi_station_get_config(station_config_st *config);
+bool wifi_station_set_config_current(station_config_st *config);
+bool wifi_station_get_reconnect_policy(void);
+void sta_status_set(uint8_t status);
+
+STATUS ICACHE_FLASH_ATTR
+cnx_do_handoff()
+{
+	STATUS res;
+	station_config_st station_cfg;
+
+	g_cnxMgr.cnx_state = g_cnxMgr.cnx_state | CNX_S_ROAMING;
+
+	ieee80211_conn_st *conn = g_ic.ic_if0_conn;
+	ieee80211_bss_st *bss = cnx_choose_rc();
+	if (bss == NULL) {
+		no_ap_found_index++;
+		if ((no_ap_found_index == 5) && (wifi_station_get_config(&station_cfg), station_cfg.bssid_set == true)) {
+			station_cfg.bssid_set = false;
+			wifi_station_set_config_current(&station_cfg);
+		}
+		System_Event_st *sev;
+		if ((event_cb != NULL) && (sev = os_zalloc(sizeof(*sev)), sev != NULL)) {
+			sev->event = EVENT_STAMODE_DISCONNECTED;
+			sev->event_info.disconnected.reason = 0xc9;
+			memset(sev->event_info.disconnected.bssid,0,6);
+			memcpy(sev->event_info.disconnected.ssid,g_ic.ic_profile.sta.ssid.ssid,0x20);
+			sev->event_info.disconnected.ssid_len = g_ic.ic_profile.sta.ssid.len;
+			if (ets_post(PRIO_EVENT,0xc9,(ETSParam)sev) != 0) {
+				os_free(sev);
+			}
+		}
+		if (((g_ic.ic_if0_conn)->ni_connect_step != '\0') ||
+			 ((g_ic.ic_if0_conn)->ni_connect_status != '\0')) {
+			if ((g_ic.ic_if0_conn)->ni_connect_status != '\x02') {
+				sta_status_set('\x03');
+				if (wifi_station_get_reconnect_policy()) {
+					os_printf_plus("no %s found, reconnect after 1s\n");
+				}
+			}
+			RTCMEM->SYSTEM_CHANCFG = 0x10000;
+			if (wifi_station_get_reconnect_policy()) {
+				ETSTimer *connect_timer = &conn->ni_connect_timeout;
+				ets_timer_disarm(connect_timer);
+				ets_timer_setfn(connect_timer,cnx_connect_timeout,(void *)0x0);
+				ets_timer_arm_new(connect_timer,1000,false,true);
+			}
+		}
+		res = OK;
+	}
+	else {
+		cnx_remove_rc_except(bss);
+		if ((g_ic.ic_if0_conn)->ni_connect_status == '\x03') {
+			(g_ic.ic_if0_conn)->ni_connect_status = '\x01';
+			(g_ic.ic_if0_conn)->ni_connect_err_time = '\0';
+		}
+		res = cnx_connect_to_bss(bss);
+		if (res == OK) {
+			g_cnxMgr.cnx_state = g_cnxMgr.cnx_state & ~CNX_S_ROAMING;
+		}
+		else if (res == FAIL) {
+			g_cnxMgr.cnx_roam_trigger = g_cnxMgr.cnx_roam_trigger | 0x140;
+		}
+	}
+	return res;
+}
 
 void ICACHE_FLASH_ATTR
 cnx_start_handoff_cb(void *arg,STATUS status)
