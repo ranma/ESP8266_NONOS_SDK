@@ -126,8 +126,6 @@ ieee80211_regdomain_update(ieee80211_bss_st *bss,uint8_t *frm)
 		return false;
 	}
 
-	wifi_country_st *country = &bss->ni_country;
-	memset(country,0,6);
 	if (frm[1] != 6) {
 		return false;
 	}
@@ -140,6 +138,7 @@ ieee80211_regdomain_update(ieee80211_bss_st *bss,uint8_t *frm)
 		.nchan = frm[6],
 		.policy = 0,
 	};
+	wifi_country_st *country = &bss->ni_country;
 	if (memcmp(country, &new_country, sizeof(*country)) != 0) {
 		DPRINTF("ieee80211_regdomain_update(%c%c s=%d n=%d)\n",
 			new_country.cc[0], new_country.cc[1], new_country.schan, new_country.nchan);
