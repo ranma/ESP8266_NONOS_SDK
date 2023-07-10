@@ -66,7 +66,7 @@ typedef union {
 	Event_OpMode_Change_st				opmode_changed;
 } Event_Info_u;
 
-enum system_event_type {
+typedef enum system_event_type {
 	EVENT_STAMODE_CONNECTED=0,
 	EVENT_STAMODE_DISCONNECTED=1,
 	EVENT_STAMODE_AUTHMODE_CHANGE=2,
@@ -78,12 +78,14 @@ enum system_event_type {
 	EVENT_OPMODE_CHANGED=8,
 	EVENT_SOFTAPMODE_DISTRIBUTE_STA_IP=9,
 	EVENT_MAX=10,
-};
+} system_event_type_t;
 
 typedef struct _esp_event {
-	enum system_event_type event;
+	system_event_type_t event;
 	Event_Info_u event_info;
 } System_Event_st;
+
+typedef void (*wifi_event_handler_cb_t)(System_Event_st *event);
 
 static_assert(sizeof(System_Event_st) == 0x2c, "System_Event_st size mismatch");
 

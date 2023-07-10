@@ -4,6 +4,8 @@
 #include "relib/s/ieee80211_bss.h"
 
 struct netif;
+struct hostapd_data;
+struct ieee80211_channel;
 
 typedef enum ieee80211_opmode {
 	IEEE80211_M_STA=0,
@@ -28,6 +30,11 @@ struct ieee80211_conn {
 			struct netif *ni_ifp;
 			ETSTimer ni_connect_timeout;
 			ETSTimer ni_beacon_timeout;
+			ETSTimer ni_mgd_probe_ap_timer;
+		};
+		struct {
+			uint8_t pad64[64];
+			uint8_t mgd_probe_send_count;
 		};
 		struct {
 			uint8_t pad68[68];
@@ -52,12 +59,14 @@ struct ieee80211_conn {
 		struct {
 			uint8_t pad200[200];
 			enum ieee80211_opmode opmode;
-		};
-		struct {
-			uint8_t pad208[208];
+			struct hostapd_data *ni_hapd;
 			uint8_t ni_connect_step;
 			uint8_t ni_connect_err_time;
 			uint8_t ni_connect_status;
+			uint8_t ni_ap_started:1;
+			uint8_t ni_sta_started:1;
+			uint8_t ni_pad:6;
+			struct ieee80211_channel *ni_channel;
 		};
 		uint8_t pad672[672];
 	};

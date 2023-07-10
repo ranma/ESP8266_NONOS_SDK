@@ -125,6 +125,13 @@ struct wl_profile {
 			ieee80211_ap_info_st save_ap_info[5];
 		};
 		struct {
+			uint8_t pad_820[820];
+			uint32_t flags_ht;
+			uint16_t htcaps;
+			uint16_t htparam;
+			uint16_t htextcaps;
+		};
+		struct {
 			uint8_t pad_832[832];
 			uint8_t auto_connect;
 		};

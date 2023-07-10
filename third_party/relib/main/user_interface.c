@@ -40,7 +40,6 @@ extern bool BcnEb_update;
 extern char *hostname;
 
 typedef void (*init_done_cb_t)(void);
-typedef void (*wifi_event_handler_cb_t)(System_Event_st *event);
 typedef void (*wifi_promiscuous_cb_t)(uint8_t *buf, uint16_t len);
 
 init_done_cb_t done_cb;

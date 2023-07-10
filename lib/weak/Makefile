@@ -71,6 +71,7 @@ OBJ_REMOVE_libmain.a = mem_manager.o \
 
 OBJ_REMOVE_libpp.a = esf_buf.o
 OBJ_REMOVE_libnet80211.a = wl_chm.o \
+	wl_cnx.o \
 	ieee80211_regdomain.o
 
 EMPTY :=

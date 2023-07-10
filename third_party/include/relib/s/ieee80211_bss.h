@@ -3,13 +3,9 @@
 
 #include "ets_sys.h"
 #include "relib/s/wifi_country.h"
+#include "relib/s/ieee80211_rateset.h"
 
 struct ieee80211_channel;
-
-struct ieee80211_rateset {
-	uint8_t rs_nrates;
-	uint8_t rs_rates[15];
-};
 
 struct wmeParams {
 	uint8_t wmep_acm;
