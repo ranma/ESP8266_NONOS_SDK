@@ -311,7 +311,11 @@ struct dport_regs {
 #define DPORT ((struct dport_regs *) 0x3ff00000)
 
 struct wdev_base_regs {
-	uint32_t res000[(0x014-0x000)/4];
+	REG32(CTL0);     // 0x000
+	REG32(RX_CTL);   // 0x004
+	REG32(RX_HEAD);  // 0x008
+	REG32(RX_AMPDU_HEAD);  // 0x00c
+	REG32(CTL10);    // 0x010
 	REG32(RX_DESC);  // 0x014
 	REG32(reg018);   // 0x018
 	REG32(reg01c);   // 0x01c
@@ -321,7 +325,7 @@ struct wdev_base_regs {
 	REG32(reg02c);   // 0x02c
 	REG32(reg030);   // 0x030
 	REG32(reg034);   // 0x034
-	REG32(reg038);   // 0x038
+	REG32(reg038);   // 0x038  /* wDev_SnifferRxLDPC, wDev_SnifferRxHT40 */
 	REG32(reg03c);   // 0x03c
 	REG32(reg040);   // 0x040
 	REG32(reg044);   // 0x044
@@ -335,60 +339,164 @@ struct wdev_base_regs {
 	REG32(reg064);   // 0x064
 	REG32(reg068);   // 0x068
 	REG32(reg06c_recv_flag);   // 0x06c
+	REG32(reg070);   // 0x070
+	REG32(reg074);   // 0x074
+	REG32(reg078);   // 0x078
+	REG32(RX_MBLK_END);    // 0x07c
+	REG32(RX_DESC_START); // 0x080
+	REG32(RX_AMPDU_MBLK_END);   // 0x084
+	REG32(RX_AMPDU_DESC_START); // 0x088
+	uint32_t res08c[(0x164-0x08c)/4];
+	REG32(BA_BITMAP_HI); // 0x164
+	REG32(BA_BITMAP_LO); // 0x168
+	REG32(REG16C);       // 0x16c
+	REG32(REG170);       // 0x170
+	REG32(BA_TIDSSN);    // 0x174
+	REG32(REG178);       // 0x178
+	uint32_t res17c[(0x1d4-0x17c)/4];
+	REG32(REG1D4);       // 0x1d4
+	uint32_t res1d8[(0x400-0x1d8)/4];
+	REG32(AUTOACKRATE0);   // 0x400
+	REG32(AUTOACKRATE1);   // 0x404
+	REG32(AUTOACKRATE2);   // 0x408
 };
 static_assert(OFFSET_OF(struct wdev_base_regs, RX_DESC) == 0x14, "RX_DESC offset mismatch");
+static_assert(OFFSET_OF(struct wdev_base_regs, REG178) == 0x178, "REG178 offset mismatch");
+static_assert(OFFSET_OF(struct wdev_base_regs, REG1D4) == 0x1d4, "REG1D4 offset mismatch");
+static_assert(OFFSET_OF(struct wdev_base_regs, AUTOACKRATE0) == 0x400, "AUTOACKRATE0 offset mismatch");
 
 #define WDEV_BASE ((struct wdev_base_regs *) 0x3ff20000)
 
 static_assert(0x3ff2006c == (uint32_t)&WDEV_BASE->reg06c_recv_flag, "0x3ff2006c addr mismatch");
 
+struct wdev_crypto_regs {
+	REG32(MAC0_CRYPTO_CONF);   // 0x000
+	REG32(MAC1_CRYPTO_CONF);   // 0x004
+	REG32(REG008);             // 0x008
+	REG32(KEYENTRY_ENABLE);    // 0x00c
+};
+static_assert(OFFSET_OF(struct wdev_crypto_regs, KEYENTRY_ENABLE) == 0x00c, "KEYENTRY_ENABLE offset mismatch");
+
+#define WDEV_CRYPTO ((struct wdev_crypto_regs *) 0x3ff20800)
+
 struct wdev_regs {
 	REG32(MICROS);  /* WDEV_COUNT_REG; microseconds, counting up */
-	REG32(reg004);  /* TODO: Check if the counter is 64bits and this is the upper 32 */
-	uint32_t res008[(0x018-0x008)/4];
-	REG32(INT_ENA);     // 0x018
-	REG32(reg01c);      // 0x01c
-	REG32(INT_STATUS);  // 0x020 /* wDev_ProcessFiq */
-	REG32(INT_ACK);     // 0x024
-	uint32_t res028[(0x084-0x028)/4];
-	REG32(TXRX_STATE);  // 0x084
-	uint32_t res088[(0x204-0x088)/4];
-	REG32(ACK_SNR);     // 0x204
+	REG32(regc04);
+	uint32_t res008[(0x014-0x008)/4];
+	REG32(regc14);       // 0x014
+	REG32(INT_ENA);      // 0x018
+	REG32(INT_RAW);      // 0x01c /* wDev_SnifferRxHT40 (all pending) */
+	REG32(INT_STATUS);   // 0x020 /* wDev_ProcessFiq (only enabled pending) */
+	REG32(INT_ACK);      // 0x024
+	REG32(MAC0_BSSID_LO); // 0x028
+	REG32(MAC0_BSSID_HI); // 0x02c
+	REG32(MAC1_BSSID_LO); // 0x030
+	REG32(MAC1_BSSID_HI); // 0x034
+	REG32(MAC0_BSSID_MASK_LO); // 0x038
+	REG32(MAC0_BSSID_MASK_HI); // 0x03c
+	REG32(MAC1_BSSID_MASK_LO); // 0x040
+	REG32(MAC1_BSSID_MASK_HI); // 0x044
+	REG32(MAC0_LO);      // 0x048 /* wDev_SetMacAddress */
+	REG32(MAC0_HI);      // 0x04c
+	REG32(MAC1_LO);      // 0x050
+	REG32(MAC1_HI);      // 0x054
+	REG32(MAC0_MASK_LO); // 0x058
+	REG32(MAC0_MASK_HI); // 0x05c /* wDev_EnableUcRx */
+	REG32(MAC1_MASK_LO); // 0x060
+	REG32(MAC1_MASK_HI); // 0x064
+	REG32(regc68);       // 0x068 /* wDev_Option_Init */
+	REG32(regc6c);       // 0x06c /* wDev_Option_Init */
+	REG32(CTL_C70);      // 0x070 /* wDev_SnifferRxHT40 */
+	uint32_t res074[(0x084-0x074)/4];
+	REG32(TXRX_STATE);   // 0x084
+	REG32(regc88);       // 0x088 /* wDev_Option_Init */
+	REG32(regc8c);       // 0x08c
+	REG32(regc90);       // 0x090 /* wDev_Option_Init */
+	REG32(regc94);       // 0x094 /* wDev_Option_Init */
+	union {
+		REG32(ACK_TYPE[8]);  // 0x098 /* wDev_SetFrameAckType */
+	};
+	uint32_t res0b8[(0x0c0-0x0b8)/4];
+	REG32(TXQ_COLLISIONS); // 0x0c0 /* wDev_ClearTxqCollisions */
+	uint32_t res0c4[(0x0dc-0x0c4)/4];
+	REG32(TX_CFG0);      // 0x0dc /* Tx_Copy2Queue */
+	REG32(TX_CFG1);      // 0x0e0 /* Tx_Copy2Queue */
+	REG32(TX_CFG2);      // 0x0e4 /* Tx_Copy2Queue */
+	REG32(TX_CFG3);      // 0x0e8 /* Tx_Copy2Queue */
+	uint32_t res0ec[(0x118-0x0ec)/4];
+	struct wdev_txqueue_entry {
+		REG32(BACKOFF);  // 0x118 /* wDev_EnableTransmit */
+		REG32(CFG0);     // 0x11c /* wDev_EnableTransmit, Tx_Copy2Queue */
+		REG32(CFG1);     // 0x120 /* Tx_Copy2Queue */
+		REG32(CFG2);     // 0x124 /* Tx_Copy2Queue */
+		REG32(CFG3);     // 0x128 /* Tx_Copy2Queue */
+		REG32(REG6);     // 0x12c
+	} TXCFG[8]; /* 2*4 AC "Access Category"? */
+	uint32_t res1cc[(0x204-0x1d8)/4];
+	REG32(ACK_SNR);      // 0x204
+	REG32(rege08);       // 0x208
 };
 static_assert(OFFSET_OF(struct wdev_regs, INT_ENA) == 0x18, "INT_ENA offset mismatch");
+static_assert(OFFSET_OF(struct wdev_regs, MAC0_LO) == 0x48, "MAC0_LO offset mismatch");
 static_assert(OFFSET_OF(struct wdev_regs, TXRX_STATE) == 0x84, "TXRX_STATE offset mismatch");
+static_assert(OFFSET_OF(struct wdev_regs, ACK_TYPE) == 0x98, "ACK_TYPE offset mismatch");
+static_assert(OFFSET_OF(struct wdev_regs, TX_CFG0) == 0xdc, "TX_CFG0 offset mismatch");
 static_assert(OFFSET_OF(struct wdev_regs, ACK_SNR) == 0x204, "ACK_SNR offset mismatch");
 
 #define WDEV ((struct wdev_regs *) 0x3ff20c00)
+static_assert((uint32_t)(&WDEV->TX_CFG0)          == 0x3ff20cdc, "TX_CFG0 offset mismatch");
+static_assert((uint32_t)(&WDEV->ACK_TYPE[4])      == 0x3ff20ca8, "ACK_TYPE[4] offset mismatch");
+static_assert((uint32_t)(&WDEV->ACK_TYPE[6])      == 0x3ff20cb0, "ACK_TYPE[6] offset mismatch");
+static_assert((uint32_t)(&WDEV->TXCFG[0].BACKOFF) == 0x3ff20d18, "TXCFG[0].BACKOFF offset mismatch");
+static_assert((uint32_t)(&WDEV->TXCFG[7].BACKOFF) == 0x3ff20dc0, "TXCFG[7].BACKOFF offset mismatch");
+static_assert((uint32_t)(&WDEV->rege08)           == 0x3ff20e08, "rege08 offset mismatch");
 
 struct wdev_timer_regs {
 	REG32(reg000);
-	REG32(TSF0_TIME_LO);   // 0x004
-	REG32(TSF0_TIME_HI);   // 0x008
+	REG32(TSF0_TIME_LO);      // 0x004
+	REG32(TSF0_TIME_HI);      // 0x008
 	REG32(reg00c);
 	REG32(reg010);
-	REG32(SLEEP0_CONF);    // 0x014
-	REG32(TSFSW0_LO);      // 0x018
-	REG32(TSFSW0_HI);      // 0x01c
+	REG32(SLEEP0_CONF);       // 0x014
+	REG32(TSFSW0_LO);         // 0x018
+	REG32(TSFSW0_HI);         // 0x01c
 	uint32_t res020[(0x048-0x020)/4];
-	REG32(MAC_TIMER64_COUNT_LO); // 0x048  /* a.k.a. WDTVAL */
-	REG32(MAC_TIMER64_COUNT_HI); // 0x04c
-	uint32_t res050[(0x098-0x050)/4];
-	REG32(TSF0_TIMER_ENA); // 0x098
-	REG32(TSF0_TIMER_LO);  // 0x09c
-	REG32(TSF0_TIMER_HI);  // 0x0a0
+	REG32(MAC_TIM1_COUNT_LO); // 0x048  /* a.k.a. WDTVAL */
+	REG32(MAC_TIM1_COUNT_HI); // 0x04c
+	uint32_t res050;
+	uint32_t res054;
+	REG32(MAC_TIM1_CTL2);     // 0x058 /* maybe INT_ENA */
+	REG32(MAC_TBTT_REG5C);    // 0x05c /* set to 0 in wDev_Reset_TBTT */
+	REG32(MAC_TBTT_REG60);    // 0x060 /* set to 0 in wDev_Reset_TBTT */
+	uint32_t res064[(0x098-0x064)/4];
+	REG32(TSF0_TIMER_ENA);    // 0x098
+	REG32(TSF0_TIMER_LO);     // 0x09c
+	REG32(TSF0_TIMER_HI);     // 0x0a0
 	uint32_t res0a4[(0x0c8-0x0a4)/4];
-	REG32(WDTCTL);         // 0x0c8
-	REG32(WDTOVF);         // 0x0cc  /* a.k.a. MAC_TIMER64BIT_ALARM */
-	uint32_t res0d0[(0x0fc-0x0d0)/4];
-	REG32(RXSTART_TIME);   // 0x0fc
+	REG32(MAC_TIM1_CTL);      // 0x0c8  /* a.k.a. WDTCTL */
+	REG32(MAC_TIM1_ALARM_LO); // 0x0cc  /* a.k.a. WDTOVF */
+	REG32(MAC_TIM1_ALARM_HI); // 0x0d0
+	uint32_t res0d4[(0x0fc-0x0d4)/4];
+	REG32(RXSTART_TIME);      // 0x0fc
 };
-static_assert(OFFSET_OF(struct wdev_timer_regs, MAC_TIMER64_COUNT_LO) == 0x48, "MAC_TIMER64_COUNT_LO offset mismatch");
+static_assert(OFFSET_OF(struct wdev_timer_regs, MAC_TIM1_COUNT_LO) == 0x48, "MAC_TIM1_COUNT_LO offset mismatch");
+static_assert(OFFSET_OF(struct wdev_timer_regs, MAC_TIM1_ALARM_LO) == 0xcc, "MAC_TIM1_ALARM_LO offset mismatch");
 static_assert(OFFSET_OF(struct wdev_timer_regs, TSF0_TIMER_ENA) == 0x98, "TSF0_TIMER_ENA offset mismatch");
-static_assert(OFFSET_OF(struct wdev_timer_regs, WDTCTL) == 0xc8, "WDTCTL offset mismatch");
+static_assert(OFFSET_OF(struct wdev_timer_regs, MAC_TIM1_CTL) == 0xc8, "MAC_TIM1_CTL offset mismatch");
 static_assert(OFFSET_OF(struct wdev_timer_regs, RXSTART_TIME) == 0xfc, "RXSTART_TIME offset mismatch");
 
 #define WDEV_TIMER ((struct wdev_timer_regs *) 0x3ff21000)
+
+struct wdev_keyentry_regs {
+	struct wdev_keyentry {
+		REG32(ADDR_LO);
+		REG32(ADDR_HI);
+		REG32(DATA[8]);
+	} E[24]; /* wDev_remove_KeyEntry_all_cnx goes over 24 entries */
+};
+static_assert(sizeof(struct wdev_keyentry) == 0x28, "struct wdev_keyentry size mismatch");
+
+#define WDEV_KEYENTRY ((struct wdev_keyentry_regs *) 0x3ff21400)
 
 #define EFUSE_D0_IS_ESP8285           BIT(4)
 #define EFUSE_D1_VERSION_SHIFT        24

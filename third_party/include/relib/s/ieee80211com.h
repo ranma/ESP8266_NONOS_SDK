@@ -68,6 +68,10 @@ typedef struct ieee80211com {
 			struct wps_funcs *ic_wps;
 		};
 		struct {
+			uint8_t pad_500[500];
+			uint32_t avs_key_mask;
+		};
+		struct {
 			uint8_t pad_512[512];
 			uint8_t ic_bss_num;
 			struct ieee80211_bss *ic_ext_ap;

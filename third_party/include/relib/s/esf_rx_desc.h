@@ -6,9 +6,9 @@ struct ieee80211_channel;
 struct esf_rx_desc {
 	uint32_t flags:12;
 	uint32_t antenna:4;
-	uint32_t service:8;
-	uint32_t rsv:8;
-	uint32_t timestamp:32;
+	uint8_t  service;
+	uint8_t  rsv;
+	uint32_t timestamp;
 	struct ieee80211_channel *channel;
 };
 
