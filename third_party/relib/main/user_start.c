@@ -303,47 +303,64 @@ Cache_Read_Enable_New(void)
 }
 
 static const char *exceptions[30] = {
-	"IllegalInstructionCause",
-	"SyscallCause",
-	"InstructionFetchErrorCause",
-	"LoadStoreErrorCause",
-	"Level1InterruptCause",
-	"AllocaCause",
-	"IntegerDivideByZeroCause",
+	"IllegalInstruction",
+	"Syscall",
+	"InstructionFetchError",
+	"LoadStoreError",
+	"Level1Interrupt",
+	"Alloca",
+	"IntegerDivideByZero",
 	"Reserved",
-	"PrivilegedCause",
-	"LoadStoreAlignmentCause",
+	"Privileged",
+	"LoadStoreAlignment",
 	"Reserved10",
 	"Reserved11",
-	"InstrPIFDateErrorCause",
-	"LoadStorePIFDataErrorCause",
-	"InstrPIFAddrErrorCause",
-	"LoadStorePIFAddrErrorCause",
-	"InstTLBMissCause",
-	"InstTLBMultiHitCause",
-	"InstFetchPrivilegeCause",
+	"InstrPIFDateError",
+	"LoadStorePIFDataError",
+	"InstrPIFAddrError",
+	"LoadStorePIFAddrError",
+	"InstTLBMiss",
+	"InstTLBMultiHit",
+	"InstFetchPrivilege",
 	"Reserved19",
-	"InstFetchProhibitedCause",
+	"InstFetchProhibited",
 	"Reserved21",
 	"Reserved22",
 	"Reserved23",
-	"LoadStoreTLBMissCause",
-	"LoadStoreTLBMultiHitCause",
-	"LoadStorePrivilegeCause",
+	"LoadStoreTLBMiss",
+	"LoadStoreTLBMultiHit",
+	"LoadStorePrivilege",
 	"Reserved27",
-	"LoadProhibitedCause",
-	"StoreProhibitedCause",
+	"LoadProhibited",
+	"StoreProhibited",
 };
 
 void ICACHE_FLASH_ATTR
 ets_fatal_exception_handler(xtos_exception_frame_t *ef, int cause)
 {
 	uint32_t excvaddr = RSR(EXCVADDR);
-	os_printf_plus("Fatal exception %d (%s)\n", cause, exceptions[cause]);
+	/* UserExceptionVector reserves 0x100 bytes of stack, and
+	 * stores the exception frame at the start of it. */
+	uint32_t sp = 0x100 + (uint32_t)ef;
+
+	os_printf_plus("\nFatal exception %d (%s)\n", cause, exceptions[cause]);
+
+	/* Dump registers */
 	os_printf_plus("epc=%08x excvaddr=%08x ps=%08x\n",
 		ef->epc, excvaddr, ef->ps);
-	os_printf_plus("a0=%08x a2=%08x a3=%08x a4=%08x a5=%08x a6=%08x\n",
-		ef->a0, ef->a2, ef->a3, ef->a4, ef->a5, ef->a6);
+	os_printf_plus("a0=%08x esp=%08x a2=%08x  a3=%08x  a4=%08x  a5=%08x  a6=%08x  a7=%08x\n",
+		ef->a0, sp, ef->a2, ef->a3, ef->a4, ef->a5, ef->a6, ef->a7);
+	os_printf_plus("a8=%08x a9=%08x a10=%08x a11=%08x a12=%08x a13=%08x a14=%08x a15=%08x\n",
+		ef->a8, ef->a9, ef->a10, ef->a11, ef->a12, ef->a13, ef->a14, ef->a15);
+
+	/* Dump stack */
+	sp &= ~31;
+	while (sp > 0x3ffc0000 && sp < 0x40000000) {
+		uint32_t *p = (void*)sp;
+		os_printf_plus("%08x: %08x %08x %08x %08x %08x %08x %08x %08x\n",
+			p, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+		sp += 32;
+	}
 
 	RTC->STORE[0] = 2;
 #if 1
