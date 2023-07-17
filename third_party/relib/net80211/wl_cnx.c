@@ -445,7 +445,7 @@ cnx_do_handoff()
 			if ((g_ic.ic_if0_conn)->ni_connect_status != '\x02') {
 				sta_status_set('\x03');
 				if (wifi_station_get_reconnect_policy()) {
-					os_printf_plus("no %s found, reconnect after 1s\n");
+					os_printf_plus("no %s found, reconnect after 1s\n", g_ic.ic_profile.sta.ssid.ssid);
 				}
 			}
 			RTCMEM->SYSTEM_CHANCFG = 0x10000;
