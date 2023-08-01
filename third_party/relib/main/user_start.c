@@ -440,6 +440,7 @@ chip_init(esp_init_data_default_st *init_data, uint8_t *macaddr)
 	phy_disable_agc();
 	ieee80211_phy_init(g_ic.ic_profile.phyMode);
 	lmacInit();
+	debug_trace((uint32_t)wDev_Initialize);
 	wDev_Initialize();
 	relib_pp_attach();
 	ieee80211_ifattach(&g_ic, macaddr);

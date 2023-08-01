@@ -9,4 +9,6 @@
 
 void Cache_Read_Enable_New(void);
 
+void debug_trace(uint32_t fnaddr);
+
 #endif /* RELIB_H */

@@ -21,8 +21,13 @@ exception handler, program execution can continue exactly where it left off.
 .org 0x10
 .global _DebugExceptionVector
 _DebugExceptionVector:
-	movi.n a2, 1
-	j _panic
+	/* PS.EXCM == 1, Level 2 Exception */
+	addi	a1,  a1, -0x60  /* Reserve 0x60 for exception frame */
+	s32i.n	a0,  a1, 0x0c
+	addi	a0,  a1, 0x60
+	s32i.n	a0,  a1, 0x10
+	s32i.n	a2,  a1, 0x14
+	j _DebugExceptionCont
 
 .org 0x20
 /* A configured Xtensa LX processor can have as many as 6 level-sensitive or edge-triggered high-priority interrupts. One NMI or non-maskable interrupt can also be configured. The processor can have as many as six high-priority interrupt levels and each
@@ -31,13 +36,14 @@ also has its own dedicated set of three special registers (EPC, EPS, and EXCSAVE
 to save the processor state */
 .global _NMIExceptionVector
 _NMIExceptionVector:
+	/* Level 3 Exception */
 	wsr	a3, EXCSAVE3
 	j _NMILevelVector
 
 .org 0x30
 .global _KernelExceptionVector
 _KernelExceptionVector:
-	/* Exceptions with PS.UM == 0, PS.EXCM == 0 */
+	/* Exceptions with PS.UM == 0, PS.EXCM == 0, Level 1 */
 	/* The following should be compatible with the rom handlers */
 	addmi	a1, a1, -0x100   /* reserve stack space, must match rom impl _xtos_return_from_exc  */
 	s32i.n	a2, a1, 0x14
@@ -52,7 +58,7 @@ _KernelExceptionVector:
 .org 0x50
 .global _UserExceptionVector
 _UserExceptionVector:
-	/* Exceptions with PS.UM == 1, PS.EXCM == 0 */
+	/* Exceptions with PS.UM == 1, PS.EXCM == 0, Level 1 */
 	/* The following should be compatible with the rom handlers */
 	addmi	a1, a1, -0x100   /* reserve stack space, must match rom impl _xtos_return_from_exc  */
 	s32i.n	a2, a1, 0x14
@@ -83,6 +89,7 @@ _ResetVector: /* really unused here, since reset should jump to ROM directly */
 	.literal .l_ets_run, ets_run
 	.literal .l_panic_stack, 0x40000000
 	.literal .l_panic_handler, panic_handler
+	.literal .l_handle_debug_exception, handle_debug_exception
 
 _panic:
 	movi.n a1, 0
@@ -93,6 +100,67 @@ _panic:
 	rsr  a4, DEPC
 	l32r a0, .l_panic_handler
 	jx a0
+
+_DebugExceptionCont:
+	/* continue storing registers, a0-a2 already saved on stack */
+	s32i.n	a3,  a1, 0x18
+	s32i.n	a4,  a1, 0x1c
+	s32i.n	a5,  a1, 0x20
+	s32i.n	a6,  a1, 0x24
+	s32i.n	a7,  a1, 0x28
+	s32i.n	a8,  a1, 0x2c
+	s32i.n	a9,  a1, 0x30
+	s32i.n	a10, a1, 0x34
+	s32i.n	a11, a1, 0x38
+	s32i.n	a12, a1, 0x3c
+	s32i	a13, a1, 0x40
+	s32i	a14, a1, 0x44
+	s32i	a15, a1, 0x48
+
+	rsr	a0,  EPC2
+	rsr	a2,  EPS2
+	rsr	a3,  SAR
+	s32i	a0,  a1, 0x00
+	s32i	a2,  a1, 0x04
+	s32i	a3,  a1, 0x08
+
+	/* Clear EXCM, so unaligned access in C code can be handled by the regular exception handlers */
+	rsr	a2,  ps
+	addi	a2,  a2, -0x10  /* EXCM bit */
+	wsr	a2,  ps
+	rsync
+
+	rsr	a3,  DEBUGCAUSE
+	s32i	a3,  a1, 0x4c
+	mov.n   a2,  a1
+	l32r	a0, .l_handle_debug_exception
+	callx0	a0
+
+	l32i	a3,  a1, 0x08
+	l32i	a2,  a1, 0x04
+	l32i	a0,  a1, 0x00
+	wsr	a3,  SAR
+	wsr	a2,  EPS2
+	wsr	a0,  EPC2
+	rsync
+
+	l32i	a15, a1, 0x48
+	l32i	a14, a1, 0x44
+	l32i	a13, a1, 0x40
+	l32i.n	a12, a1, 0x3c
+	l32i.n	a11, a1, 0x38
+	l32i.n	a10, a1, 0x34
+	l32i.n	a9,  a1, 0x30
+	l32i.n	a8,  a1, 0x2c
+	l32i.n	a7,  a1, 0x28
+	l32i.n	a6,  a1, 0x24
+	l32i.n	a5,  a1, 0x20
+	l32i.n	a4,  a1, 0x1c
+	l32i.n	a3,  a1, 0x18
+	l32i.n	a2,  a1, 0x14
+	l32i.n	a0,  a1, 0x0c
+	l32i.n	a1,  a1, 0x10  /* Allows modifying a1 (stack pointer) from debug exception handler */
+	rfi 2
 
 call_user_start_local:
 	l32r	a0, .l_text_start
