@@ -89,10 +89,13 @@ decode_loadstore_wide(int imm8, int r, int s, int t, uint32_t *regs)
 	} else { /* Load */
 		ets_printf("L%d%sI a%d, a%d, %d ; [@%08x]",
 			bits, suffix, t, s, dis, addr);
-		uint8_t *src = (uint8_t*)regs[s];
-		if ((uint32_t)src >= 0x3ff00000 && (uint32_t)src < 0x60400000) {
-			uint32_t v = src[0] | (src[1] << 8) | (src[2] << 16) | (src[3] << 24);
-			v &= mask;
+		/* TODO: At this point the insn isn't executed yet, so we emulate it
+		 * However this means we'll do the load twice, which for hw regs
+		 * can mess up hw state for "reset on read" registers.
+		 * This could be fixed by fully emulating the instruction
+		 * (updating saved registers, pc and icount) */
+		if (addr >= 0x20000000 && addr < 0x80000000) {
+			uint32_t v = UNALIGNED_L32(addr) & mask;
 			ets_printf("=%08x", v);
 		}
 	}
@@ -135,9 +138,13 @@ decode_loadstore(uint32_t insn, uint32_t *regs)
 	} else {
 		ets_printf("L32I.N a%d, a%d, %d ; [@%08x]",
 			t, s, dis, addr);
-		uint32_t *src = (uint32_t*)regs[s];
-		if ((uint32_t)src >= 0x20000000 && (uint32_t)src < 0x80000000) {
-			ets_printf("=%08x", *src);
+		/* TODO: At this point the insn isn't executed yet, so we emulate it
+		 * However this means we'll do the load twice, which for hw regs
+		 * can mess up hw state for "reset on read" registers.
+		 * This could be fixed by fully emulating the instruction
+		 * (updating saved registers, pc and icount)  */
+		if (addr >= 0x20000000 && addr < 0x80000000) {
+			ets_printf("=%08x", UNALIGNED_L32(addr));
 		}
 	}
 	return true;
