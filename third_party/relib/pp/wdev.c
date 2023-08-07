@@ -30,12 +30,13 @@
 #define WdevRxIsClose WdevRxIsClose_103
 #define BcnInterval BcnInterval_108
 #define BcnSendTick BcnSendTick_111
-#define _wdev_rx_desc_spac _wdev_rx_desc_space_115
+#define _wdev_rx_desc_space _wdev_rx_desc_space_115
 #define _wdev_rx_mblk_space _wdev_rx_mblk_space_116
 #define _wdev_tx_desc_space _wdev_tx_desc_space_118
 #define _wdev_tx_mblk_space _wdev_tx_mblk_space_119
 #define _wdev_rx_ampdu_len_desc_space _wdev_rx_ampdu_len_desc_space_120
 #define _wdev_rx_ampdu_len_space _wdev_rx_ampdu_len_space_121
+#define MacTimerCb MacTimerCb_126
 
 #define RX_MBLK_ENTRY_LEN 1604
 #define RX_AMPDU_ENTRY_LEN 256
@@ -55,7 +56,11 @@ maybe_extern wdev_status_st my_event;
 maybe_extern esf_buf_st *our_tx_eb;
 maybe_extern uint64_t WdevTimOffSet;
 maybe_extern bool WdevRxIsClose;
+#if 1
 maybe_extern uint32_t BcnInterval = 102400;
+#else
+extern uint32_t BcnInterval;
+#endif
 maybe_extern uint32_t BcnSendTick;
 maybe_extern lldesc_st _wdev_rx_desc_space[6];
 maybe_extern uint8_t _wdev_rx_mblk_space[6 * RX_MBLK_ENTRY_LEN];
@@ -119,7 +124,6 @@ wDevCleanRxBuf(lldesc_st *desc)
 	*(uint32_t *)(desc->buf + desc->size) = 0xdeadbeef;
 }
 
-
 void
 wDev_MacTim1Arm(uint32_t time_in_us)
 {
@@ -172,7 +176,7 @@ wDev_SetFrameAckType(uint8_t type,uint8_t ack_type)
 	return (x >> shift) & 0xf;
 }
 
-void
+void ICACHE_FLASH_ATTR
 wDevEnableRx(void)
 {
 	WdevRxIsClose = false;
@@ -239,7 +243,8 @@ wDev_SetWaitingQueue(uint8_t index)
 	WDEV->TX_CFG0 |= 0x40000000;
 }
 
-int wDev_Get_KeyEntry(int *alg, uint8_t *bssid_no,int *key_idx,uint8_t *addr,int key_entry_valid,uint8_t *key, int key_len)
+int
+wDev_Get_KeyEntry(int *alg, uint8_t *bssid_no,int *key_idx,uint8_t *addr,int key_entry_valid,uint8_t *key, int key_len)
 {
 	uint32_t addr_lo = WDEV_KEYENTRY->E[key_entry_valid].ADDR_LO;
 	uint32_t addr_hi = WDEV_KEYENTRY->E[key_entry_valid].ADDR_HI;

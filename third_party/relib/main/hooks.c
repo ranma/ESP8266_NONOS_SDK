@@ -14,6 +14,12 @@ extern char ets_hostap_deliver_data;
 extern char jmp_ieee80211_deliver_data;
 extern char ets_ieee80211_deliver_data;
 
+#define EXTERN(x) \
+extern char x; \
+extern char relib_ ## x;
+
+#define OVERRIDE(x) {&x, &relib_ ## x}
+
 struct override {
 	void* old_fn;
 	void* new_fn;
@@ -37,11 +43,13 @@ try_patch(uint32_t old, uint32_t new)
 		return;
 	}
 	old_op = *data;
+#if 0
 	/* check for "addi a1, a1" */
 	if ((old_op & 0xffff) != 0xc112) {
 		ets_printf("unexpected function prologue %08x, skipped!\n", old_op);
 		return;
 	}
+#endif
 	if (old >= 0x40200000 || old < 0x40100000) {
 		ets_printf("not in IRAM\n");
 		return;
@@ -50,9 +58,6 @@ try_patch(uint32_t old, uint32_t new)
 		ets_printf("%d out of jump range\n", delta);
 		return;
 	}
-	/* It's a reasonably safe assumption that there'll be space in
-	 * front for a literal, unless it is a very trivial function */
-	*(data-1) = new;
 	old_op = *data;
 	*data = op;
 	ets_printf("patched code %08x -> %08x\n", old_op, op);
