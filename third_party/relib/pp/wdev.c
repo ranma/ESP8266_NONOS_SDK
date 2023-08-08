@@ -1165,18 +1165,18 @@ wDev_SetMacAddress(uint8_t index,uint8_t *address)
 		| ((uint32_t)address[3] << 24);
 	uint32_t mac_hi = address[4] | ((uint32_t)address[5] << 8);
 
-	if (index -= 0) {
-		WDEV->MAC0_LO = mac_lo;
-		WDEV->MAC0_HI = mac_hi;
-		WDEV->MAC0_MASK_LO = 0xffffffff;
-		WDEV->MAC0_MASK_HI = 0xffff;
-		WDEV->MAC0_MASK_HI |= 0x10000;
-	} else {
+	if (index != 0) {
 		WDEV->MAC1_LO = mac_lo;
 		WDEV->MAC1_HI = mac_hi;
 		WDEV->MAC1_MASK_LO = 0xffffffff;
 		WDEV->MAC1_MASK_HI = 0xffff;
 		WDEV->MAC1_MASK_HI |= 0x10000;
+	} else {
+		WDEV->MAC0_LO = mac_lo;
+		WDEV->MAC0_HI = mac_hi;
+		WDEV->MAC0_MASK_LO = 0xffffffff;
+		WDEV->MAC0_MASK_HI = 0xffff;
+		WDEV->MAC0_MASK_HI |= 0x10000;
 	}
 }
 
