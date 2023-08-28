@@ -10,6 +10,8 @@
 #include "relib/relib.h"
 #include "relib/s/access.h"
 #include "relib/s/esf_buf.h"
+#include "relib/s/esf_tx_desc.h"
+#include "relib/s/lmac_conf_mib.h"
 
 #if 1
 #define maybe_extern extern
@@ -26,6 +28,7 @@ maybe_extern access_st our_instances[8];
 maybe_extern esf_buf_st *our_wait_eb;
 maybe_extern uint8_t our_wait_clear_type;
 maybe_extern uint8_t our_active_index;
+maybe_extern lmac_conf_mib_st lmacConfMib;
 
 void
 lmacTryTxopEnd(access_st *my, bool success)
@@ -125,6 +128,218 @@ lmacProcessTXStartData(uint8_t index)
 	my->state = 2;
 	lmacContinueFrameExchangeSequence(my);
 	lmacProcessCollisions();
+}
+
+esf_buf_st *ppFetchTxQFirstAvail(uint8_t qid);
+
+#if 0
+void
+lmacContinueFrameExchangeSequence(access_st *my)
+{
+	uint32_t uVar1;
+	esf_buf_t *new_tx_frame;
+
+	esf_buf_t *tx_frame = my->tx_frame;
+	if (tx_frame == NULL) {
+		ets_printf("%s %u\n", "mac", 0x266);
+		while (1);
+	}
+	if (our_tx_eb != NULL) {
+		return;
+	}
+	if (our_wait_eb != NULL) {
+		ets_printf("%s %u\n", "mac", 0x26d);
+		while (1);
+	}
+
+	esf_tx_desc_t *tx_desc = (tx_frame->desc).tx_desc;
+	uVar1 = *(uint32_t *)tx_desc;
+	our_tx_eb = tx_frame;
+	my->tx_frame = NULL;
+	if ((uVar1 >> 0x1c & 1) == 0) {
+		if ((my->intxop == false) && (0 < my->txop)) {
+			my->trytxop = true;
+			uVar1 = *(uint32_t *)tx_desc;
+		}
+		if ((my->txop_max != 0) &&
+			 (((my->intxop != false && (my->txop_enough != false)) || (my->trytxop != false)))) {
+			new_tx_frame = ppFetchTxQFirstAvail((byte)(uVar1 >> 2) & 0xf);
+			uVar1 = *(uint *)(tx_frame->desc).rx_desc;
+			if (new_tx_frame != (esf_buf_t *)0x0) {
+				if (((uVar1 >> 0x10 & 1) == 0) && ((uVar1 >> 7 & 1) == 0)) {
+					our_wait_eb = new_tx_frame;
+					lmacPrepareImrTxFrame(my,true);
+					lmacSetWaitQueue(my,0xd4);
+					return;
+				}
+				if (((uVar1 >> 0xb & 1) != 0) &&
+					 (*(byte *)&((tx_frame->desc).rx_desc)->timestamp >> 4 < 2)) {
+					return;
+				}
+				my->tx_frame = new_tx_frame;
+				lmacPrepareImrTxFrame(my,false);
+				wDev_EnableTransmit(my->ac,'\0',0);
+				return;
+			}
+		}
+		if ((((uVar1 >> 0xd & 1) != 0) && ((uVar1 >> 0xc & 1) == 0)) &&
+			 (tx_frame = ppFetchTxQFirstAvail((byte)(uVar1 >> 2) & 0xf), tx_frame != (esf_buf_t *)0x0))
+		{
+			our_wait_eb = tx_frame;
+			lmacPrepareImrTxFrame(my,true);
+			lmacSetWaitQueue(my,0xd4);
+		}
+	}
+}
+#endif
+
+esf_buf_st *ppDequeueTxQ(uint8_t qid);
+void ppEnqueueTxDone(esf_buf_st *eb);
+STATUS pp_post(int sig);
+struct target_rc;
+void rcUpdateTxDone(struct target_rc *trc, esf_tx_desc_st *desc);
+
+void
+lmacTxDone(esf_buf_st *eb, bool cont)
+{
+	ppEnqueueTxDone(eb);
+	uint32_t uVar1 = *(uint32_t *)(eb->desc).tx_desc;
+	/* Check flag 3 and flag 22 */
+	if ((((uVar1 >> 9) & 1) != 0) && (((uVar1 >> 0x1c) & 1) == 0)) {
+		rcUpdateTxDone(eb->trc, (eb->desc).tx_desc);
+	}
+	pp_post(4);
+	if ((cont) && lmacIsIdle(((eb->desc).tx_desc)->ac)) {
+		pp_post(((eb->desc).tx_desc)->ac);
+	}
+}
+
+
+void
+lmacDiscardMSDU(access_st *my, esf_buf_st *eb, tx_status_t tx_status, bool cont)
+{
+	uint32_t flags;
+	esf_tx_desc_st *tx_desc;
+	do {
+		tx_desc = (eb->desc).tx_desc;
+		my->failure_count = my->failure_count + 1;
+		flags = tx_desc->flags;
+		tx_desc->status = tx_status;
+		if (((flags & ESF_TX_FLAG_MSDU_END) == 0) || ((flags & ESF_TX_FLAG_MSDU_MORE) != 0)) {
+			lmacTxDone(eb,cont);
+		}
+		else {
+			lmacTxDone(eb,false);
+		}
+	} while ((((flags & ESF_TX_FLAG_MSDU_END) != 0) && ((flags & ESF_TX_FLAG_MSDU_MORE) == 0)) &&
+					(eb = ppDequeueTxQ(tx_desc->qid), eb != NULL));
+}
+
+void
+lmacDiscardAgedMSDU(access_st *my, esf_buf_st *eb, bool cont)
+{
+	lmacDiscardMSDU(my,eb,TX_DESCRIPTOR_STATUS_DISCARD,cont);
+}
+
+void
+lmacRecycleMPDU(access_st *my, esf_buf_st *eb, bool cont)
+{
+	my->success_count++;
+	eb->desc.tx_desc->status = TX_DESCRIPTOR_STATUS_SUCCESS;
+	lmacTxDone(eb,cont);
+}
+
+void ppRecordBarRRC(uint8_t qid, uint8_t rrc);
+
+void
+lmacDiscardFrameExchangeSequence(access_st *my)
+{
+	esf_buf_st *eb;
+	esf_tx_desc_st *tx_desc;
+
+	eb = my->tx_frame;
+	if (my->state != 6) {
+		ets_printf("%s %u\n", "mac", 0x2f4);
+		while (1);
+	}
+	tx_desc = (eb->desc).tx_desc;
+	my->tx_frame = NULL;
+	my->state = 0;
+	if ((tx_desc->flags & ESF_TX_FLAG_BUF_BAR) == 0) {
+		if (tx_desc->src < lmacConfMib.dot11ShortRetryLimit) {
+			if (tx_desc->lrc < lmacConfMib.dot11LongRetryLimit) {
+				lmacDiscardAgedMSDU(my, eb, true);
+			}
+			else {
+				lmacDiscardMSDU(my, eb, TX_DESCRIPTOR_STATUS_LRC_EXCEED, true);
+			}
+		}
+		else {
+			lmacDiscardMSDU(my, eb, TX_DESCRIPTOR_STATUS_SRC_EXCEED, true);
+		}
+	}
+	else {
+		/* BAR == Block Ack Request */
+		ppRecordBarRRC(tx_desc->qid, tx_desc->rrc + 2);
+		ets_post(0x20, 6, tx_desc->qid);
+	}
+}
+
+bool lmacRetryTxFrame(access_st *my, bool copy);
+
+bool
+lmacEndFailNoStart(access_st *my)
+{
+	bool bVar1;
+	esf_buf_st *eb;
+
+	if (my->intxop == false) {
+		lmacTryTxopEnd(my, false);
+		bVar1 = false;
+	}
+	else {
+		if (my->txop_enough == false) {
+			eb = NULL;
+			my->tx_frame = NULL;
+		}
+		else {
+			eb = ppFetchTxQFirstAvail((my->tx_frame->desc).tx_desc->qid);
+			my->tx_frame = eb;
+		}
+		if (eb == NULL) {
+			bVar1 = false;
+			my->intxop = false;
+		}
+		else {
+			bVar1 = lmacRetryTxFrame(my,false);
+		}
+	}
+	my->end_status = '\t';
+	return bVar1;
+}
+
+void ppRollBackTxQ(esf_buf_st *eb);
+
+void
+lmacEndFailFrag(access_st *my)
+{
+	if (my->intxop == false) {
+		lmacTryTxopEnd(my, false);
+	}
+	else {
+		my->intxop = false;
+	}
+	ppRollBackTxQ(our_wait_eb);
+	my->end_status = '\f';
+}
+
+bool
+lmacEndFailTxop(access_st *my)
+{
+	my->tx_frame = our_wait_eb;
+	bool bVar1 = lmacRetryTxFrame(my,true);
+	my->end_status = '\v';
+	return bVar1;
 }
 
 
